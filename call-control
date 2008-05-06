@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+# -*- coding: ascii -*-
+
+'''Implementation of a call controller for SER.
+
+Copyright 2005 Dan Pascu
+'''
+
+if __name__ == '__main__':
+    import sys
+    from optparse import OptionParser
+    from application.process import process, ProcessError
+    from application import log
+    import callcontrol
+   
+    name = 'call-control'
+    fullname = 'SIP call-control'
+    description = 'Implementation of call-control for SIP'
+
+    config_directory = '/etc/callcontrol'
+    runtime_directory = '/var/run/callcontrol'
+    default_pid = "%s/%s.pid" % (runtime_directory, name)
+
+    parser = OptionParser(version=ver)
+    parser.add_option("--no-fork", action="store_false", dest="fork", default=1,
+                      help="run the process in the foreground")
+    parser.add_option("--pid", dest="pid_file", default='/var/run/callcontrol.pid',
+                      help="pid file (/var/run/callcontrol/callcontrol.pid)", 
+                      metavar="FILE")
+    (options, args) = parser.parse_args()
+
+    pid_file = options.pid_file
+   
+    process._system_config_directory = config_directory
+    try:
+        process.runtime_directory = runtime_directory
+    except ProcessError, e:
+        log.fatal(str(e))
+        sys.exit(1)
+
+    if options.fork:
+        try:
+            process.daemonize(pid_file)
+        except ProcessError, e:
+            log.fatal(str(e))
+            sys.exit(1)
+        log.startSyslog(name)
+
+    log.msg("Starting %s %s" % (fullname, callcontrol.__version__))
+
+    from callcontrol.controller import CallControlServer
+
+    if not options.fork:
+        from application.debug.memory import *
+
+    try:
+        cserver = CallControlServer()
+    except Exception, e:
+        log.error("failed to create SIP Call Control Server: %s" % e)
+        log.err()
+        sys.exit(1)
+
+    cserver.run()
+
+    if not options.fork:
+        #from application.debug.memory import *
+        memory_dump()

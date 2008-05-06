@@ -1,0 +1,98 @@
+;
+; Configuration file for Call Controller
+;
+
+[CallControl]
+;
+; Section for configuring the call controller
+;
+; The following options are available here:
+;
+; socket   Path to the UNIX socket where the controller receives
+;          commands from SER. This should match the value for
+;          call_control_socket in openser.cfg
+;          Default value: /var/run/callcontrol/socket
+;
+; group    Put the socket in this group and make it group writable.
+;          Default value: openser
+;
+; limit    Limit call duration to this value (in seconds) for all calls.
+;          Prepaid calls will not use this value, they will have the time
+;          limit calculated based on their credit.
+;          The value should be the number of seconds of the desired limit
+;          for the call duration or None for no limit. Warning: 0 means
+;          exactly that: 0 seconds, not diabled. Use None for disabled.
+;          Default value: None 
+;
+;socket = /var/run/callcontrol/socket
+;group  = openser
+;limit  = None
+
+[SIP]
+;
+; Section for configuring the SIP client
+;
+; The following options are available here:
+;
+; listen    Network address where the SIP client receives the replies to
+;           the fake BYE request it sends. It will also use this address
+;           as the source address when sending the fake BYEs.
+;
+;            - address[:port]
+;                listen on the specified address and port
+;                address can be an IP, a hostname or the keyword default
+;                (in which case it will listen on 0.0.0.0:5070). If the
+;                address is a hostname, that should map in DNS to an IP
+;                address present on the machine through an A record.
+;                If port is missing assume 5070.
+;
+;           Default value: default
+;               
+; proxy     Network address where the SIP server resides. This is the
+;           address where the fake BYE requests are sent.
+;
+;            - address[:port]
+;                send to the specified address and port. address can be
+;                an IP or a hostname. If port is missing assume 5060.
+;
+;           Default value: None (call controller will not start until
+;                                this is properly defined)
+;
+;listen = default
+;proxy  = None
+
+[PrepaidEngine]
+;
+; Configure where the rating engine is located and how many connections
+; to keep open with the rating engine.
+;
+; address        Network address where the rating engine is located.
+;
+;                 - address[:port]
+;                     send rating requests (querying or changing the rating
+;                     credit for a SIP account) to this address. address can
+;                     be an IP or a hostname. If port is missing assume 9024.
+;
+;                Default value: 127.0.0.1
+;
+; connections    Keep this many simultaneous connection open with the rating
+;                engine at any time.
+;
+;                Default value: 1
+;
+;address = 127.0.0.1
+;connections = 1
+
+[CDRDatabase]
+;
+; Used to keep track of calls that timeout and are closed by external means
+; (like mediaproxy) without sending BYEs that will close the call in the
+; call controller the normal way.
+; Database table can be defined as static (e.g. radacct) or as strftime like
+; time specification (e.g. radacct%Y%m)
+;
+;user = dbuser
+;password = dbpass
+;host = dbhost
+;database = radius
+;table = radacct%Y%m
