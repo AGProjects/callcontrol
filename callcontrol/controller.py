@@ -1,9 +1,7 @@
+# Copyright (C) 2005-2008 AG Projects.
+#
 
-'''
-Implementation of a call control server for SER.
-
-Copyright 2005 AG Projects
-'''
+"""Implementation of a call control server for SER."""
 
 import os
 import grp
@@ -104,7 +102,7 @@ class CallControlServer(object):
         
         self.db = CDRDatabase()
         
-        self.calls = CallList()
+        self.calls = {}
         self._restore_calls()
 
     def run(self):
@@ -141,41 +139,37 @@ class CallControlServer(object):
         reactor.stop()
     
     def _save_calls():
-        self.calls.acquire()
-        try:
-            if self.calls:
-                log.info('saving calls')
-                calls_file = '%s/%s' % (process.runtime_directory, 'calls.dat')
+        if self.calls:
+            log.info('saving calls')
+            calls_file = '%s/%s' % (process.runtime_directory, 'calls.dat')
+            try:
+                f = open(calls_file, 'w')
+            except:
+                pass
+            else:
+                for call in self.calls.values():
+                    call.lock = None
+                    ## we will mark timers with 'running' or 'idle', depending on their current state,
+                    ## to be able to correctly restore them later (Timer objects cannot be pickled)
+                    if call.timer is not None:
+                        if call.inprogress:
+                            call.timer.cancel()
+                            call.timer = 'running' ## temporary mark that this timer was running
+                        else:
+                            call.timer = 'idle'    ## temporary mark that this timer was not running
+                failedDump = False
                 try:
-                    f = open(calls_file, 'w')
-                except:
-                    pass
-                else:
-                    for call in self.calls.values():
-                        call.lock = None
-                        ## we will mark timers with 'running' or 'idle', depending on their current state,
-                        ## to be able to correctly restore them later (Timer objects cannot be pickled)
-                        if call.timer is not None:
-                            if call.inprogress:
-                                call.timer.cancel()
-                                call.timer = 'running' ## temporary mark that this timer was running
-                            else:
-                                call.timer = 'idle'    ## temporary mark that this timer was not running
-                    failedDump = False
                     try:
-                        try:
-                            cPickle.dump(self.calls, f)
-                        except Exception, why:
-                            warning('failed to dump call list: %s' % str(why))
-                            failedDump = True
-                    finally:
-                        f.close()
-                    if failedDump:
-                        try:    os.unlink(calls_file)
-                        except: pass
-                self.calls = {}
-        finally:
-            self.calls.release()
+                        cPickle.dump(self.calls, f)
+                    except Exception, why:
+                        warning('failed to dump call list: %s' % str(why))
+                        failedDump = True
+                finally:
+                    f.close()
+                if failedDump:
+                    try:    os.unlink(calls_file)
+                    except: pass
+            self.calls = {}
 
     def _restore_calls():
         pass

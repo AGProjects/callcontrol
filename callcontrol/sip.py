@@ -1,23 +1,24 @@
-'''
+# Copyright (C) 2005-2008 AG Projects.
+#
+
+"""
  Implementation of a SIP Null client
 
  The SIP Null client will send fake BYE messages and will receive their replies,
 but will ignore them completely.
+"""
 
-Copyright 2005 AG Projects
-'''
-
-import sys, atexit
-import socket, errno
-import asyncore
-from time import sleep
-
-from threading import Thread, Lock
-from threading import enumerate as enumerate_threads
+import time
+import random
 
 from application.configuration import ConfigSection, ConfigFie
+from application.configuration.datatypes import NetworkAddress, EndpointAddress
+from application.python.util import Singleton
+from application import log
 
-from callcontrol.datatypes import NetworkAddress, EndpointAddress
+from twisted.internet.protocol import DatagramProtocol
+from twisted.internet import reactor
+
 from callcontrol import configuration_filename
 
 ##
@@ -38,9 +39,9 @@ config_file.read_settings('SIP', SipConfig)
 
 # check these. what should be enforced by the data type?
 if SipConfig.listen is None:
-    fatal('listening address for the SIP client is not defined')
+    log.fatal('listening address for the SIP client is not defined')
 if SipConfig.proxy is None:
-    fatal('SIP proxy address is not defined')
+    log.fatal('SIP proxy address is not defined')
 
 ## Determine what is the address we will send from, based on configuration
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -57,129 +58,43 @@ del s
 # End SIP configuration
 #
 
-try:   socket_map
-except NameError: socket_map = {}
+##
+## SIP client implementation
+##
 
 class SipError(Exception): pass
 class SipClientError(SipError): pass
 class SipTransmisionError(SipError): pass
 
-class SipReplyHandler(Thread):
-    '''Run the SIP client's reply loop handler in a separate thread'''
-    def __init__(self, sipclient):
-        Thread.__init__(self, name='SipReplyHandler')
-        self.setDaemon(True)
-        self.sipclient = sipclient
-    def run(self):
-        self.sipclient.loop()
 
-## socket_map access is not protected by locks in asyncore, so basically
-## the only function that is safe to call from other threads is `send'
-## anything that changes socket_map (like close) shouldn't be called.
-## if multiple instances of this class are created, they all must be
-## created before calling any of their start methods.
-class SipNullClient(asyncore.dispatcher):
-    '''
-    A dumb SIP client, that is able to send a SIP request and wait for the
-    reply, which it'll ignore. The SIP request must be build by the caller.
-    '''
-    def __init__(self, listen=None, proxy=None, socket_map=None):
-        asyncore.dispatcher.__init__(self)
-        if socket_map is not None:
-            self.socket_map = socket_map
-        else:
-            self.socket_map = {}
-        self.listen = listen or SipConfig.listen
-        self.proxy  = proxy  or SipConfig.proxy
-        self.create_socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.set_reuse_addr()
-        try:
-            self.bind(self.listen)
-        except socket.error, why:
-            raise SipClientError, "couldn't create command socket: %s" % why[1]
-        self.connected = True
-        self.started = False
-        self.lock = Lock()
-        atexit.register(self.handle_close)
+class SipNullClientProtocol(DatagramProtocol):
+    def datagramReceived(self, data, (host, port)):
+        pass ## ignore reply
 
-    def send(self, data):
-        self.lock.acquire()
-        try:
-            return self.socket.sendto(data, self.proxy)
-        finally:
-            self.lock.release()
-
-    def send2(self, data):
-        self.lock.acquire()
-        try:
-            for c in range(0, 3):
-                try:
-                    return self.socket.sendto(data, self.proxy)
-                except socket.error, why:
-                    if why[0] != errno.EWOULDBLOCK:
-                        raise SipTransmisionError, why[1]
-                    #else:
-                        #sleep(1e-6)
-            raise SipTransmisionError, "Failed to send BYE message after 3 attempts"
-        finally:
-            self.lock.release()
-
-    def add_channel(self):
-        asyncore.dispatcher.add_channel(self, self.socket_map)
-    def del_channel(self):
-        asyncore.dispatcher.del_channel(self, self.socket_map)
-    def writable(self):
-        return 0
-    def handle_connect(self):
-        pass
-    def handle_close(self):
-        self.close()
-
-    def handle_read(self):
-        self.lock.acquire()
-        try:
-            try:
-                self.recv(65536) ## ignore reply
-            except socket.error:
-                pass
-        finally:
-            self.lock.release()
-
-    def loop(self):
-        asyncore.loop(timeout=10.0, map=self.socket_map)
-
-    def start(self):
-        '''Run the reply handler in a separate thread'''
-        if not self.started:
-            ## We must be careful to run a single thread for each socket_map
-            ## to avoid concurency issues because asyncore doesn't properly
-            ## secure access to socket_map for multithreaded applications
-            for t in enumerate_threads():
-                try:
-                    socket_map = t.sipclient.socket_map
-                except AttributeError:
-                    continue
-                if socket_map is self.socket_map:
-                    ## There is already a thread running for this socket_map.
-                    break
-            else:
-                ## We couldn't find a running thread for this socket_map. Start one.
-                SipReplyHandler(self).start()
-            self.started = True
 
 class SipClient(object):
-    '''Return a singleton instance of SipNullClient, using default parameters.'''
-    _lock = Lock()
-    _sipclient = None
-    def __new__(typ):
-        SipClient._lock.acquire()
-        try:
-            if SipClient._sipclient is None:
-                SipClient._sipclient = SipNullClient()
-            return SipClient._sipclient
-        finally:
-            SipClient._lock.release()
+    """
+    A dumb SIP client, that is able to send a SIP request and wait for the
+    reply, which it'll ignore. The SIP request must be build by the caller.
+    Returns a singleton instance.
+    """
+    __metaclass__ = Singleton
+    def __init__(self, listen=None, proxy=None):
+        self.listen = listen or SipConfig.listen
+        self.proxy = proxy or SipConfig.proxy
+        self.protocol = SipNullClientProtocol()
+        reactor.listenUDP(self.listen, self.protocol)
 
+    def send(self, data):
+        self.protocol.transport.write(data, self.proxy)
+
+#
+# End SIP client implementation
+#
+
+##
+## Call data types
+##
 
 class SipClientInfo(Structure):
     '''Describes the SIP client/proxy/connection parameters'''
@@ -191,3 +106,318 @@ class SipClientInfo(Structure):
 
 sipClientInfo = SipClientInfo()
 
+
+class InvalidRequestError(Exception): pass
+
+
+class ReactorTimer(object):
+    def __init__(self, delay, function, args=[], kwargs={}):
+        self.delay = delay
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.dcall = None
+
+    def start(self):
+        if self.dcall is None:
+            self.dcall = reactor.callLater(self.delay, self.function, *args, **kwargs)
+
+    def cancel(self):
+        if self.dcall is not None:
+            self.dcall.cancel()
+
+class Structure(dict):
+    def __init__(self):
+        dict.__init__(self)
+    def __getitem__(self, key):
+        elements = key.split('.')
+        obj = self ## start with ourselves
+        for e in elements:
+            if not isinstance(obj, dict):
+                raise TypeError, 'unsubscriptable object'
+            obj = dict.__getitem__(obj, e)
+        return obj
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+        dict.__setitem__(self, key, value)
+    def __delitem__(self, key):
+        dict.__delitem__(self, key)
+        del self.__dict__[key]
+    __setattr__ = __setitem__
+    def __delattr__(self, name):
+        try:
+            del self.__dict__[name]
+        except KeyError:
+            raise AttributeError, "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
+        else:
+            dict.__delitem__(self, name)
+    def update(self, other):
+        dict.update(self, other)
+        for key, value in other.items():
+            self.__dict__[key] = value
+
+class Request(Structure):
+    '''A request parsed into a structure based on request type'''
+    __methods = {'init':   ('callid', 'contact', 'cseq', 'diverter', 'ruri', 'sourceip', 'from', 'fromtag', 'to'),
+                 'start':  ('callid', 'contact', 'totag'),
+                 'update': ('callid', 'cseq', 'fromtag'),
+                 'stop':   ('callid',),
+                 'debug':  ()}
+    def __init__(self, message):
+        Structure.__init__(self)
+        try:    message + ''
+        except: raise ValueError, 'message should be a string'
+        lines = [line.strip() for line in message.splitlines() if line.strip()]
+        if not lines:
+            raise InvalidRequestError, 'missing input'
+        cmd = lines[0].lower()
+        if cmd not in self.__methods.keys():
+            raise InvalidRequestError, 'unknown request: %s' % cmd
+        try:
+            parameters = dict([re.split(r':\s+', l, 1) for l in lines[1:]])
+        except ValueError:
+            raise InvalidRequestError, "badly formatted request"
+        for p in self.__methods[cmd]:
+            try: 
+                parameters[p]
+            except KeyError:
+                raise InvalidRequestError, 'missing %s from request' % p
+        self.cmd = cmd
+        self.update(parameters)
+        if cmd=='init' and self.diverter.lower()=='none':
+            self.diverter = None
+    def __str__(self):
+        if self.cmd == 'init':
+            return "%(cmd)s: callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s" % self
+        elif self.cmd == 'start':
+            return "%(cmd)s: callid=%(callid)s" % self
+        elif self.cmd == 'update':
+            return "%(cmd)s: callid=%(callid)s cseq=%(cseq)s fromtag=%(fromtag)s" % self
+        elif self.cmd == 'stop':
+            return "%(cmd)s: callid=%(callid)s" % self
+        elif self.cmd == 'debug':
+            return "%(cmd)s" % self
+        else:
+            return Structure.__str__(self)
+
+class Endpoint(Structure):
+    '''Parameters that belong to a given endpoint during a call'''
+    def __init__(self, request):
+        Structure.__init__(self)
+        try:
+            self.cseq = int(request.cseq)
+        except:
+            self.cseq = 1
+        self.nextcseq = self.cseq + 1
+        self.contact  = request.contact
+        self.branch   = 'z9hG4bK' + str(random.choice(xrange(1000000, 9999999)))
+    def update(self, request):
+        try:
+            self.cseq = int(request.cseq)
+        except:
+            self.cseq = 1
+        self.nextcseq = self.cseq + 1
+    #def gethp(self): return self.contact[self.contact.find('@')+1:]
+    #hostport = property(gethp)
+    #del gethp
+
+class Call(Structure):
+    '''Defines a call'''
+    def __init__(self, request):
+        Structure.__init__(self)
+        self.prepaid   = False
+        self.locked    = False ## if the account is locked because another call is in progress
+        self.expired   = False ## if call did consume its timelimit before being terminated
+        self.created   = time.time()
+        self.timer     = None
+        self.starttime = None
+        self.endtime   = None
+        self.timelimit = None
+        self.duration  = 0
+        self.caller    = Endpoint(request)
+        self.called    = None
+        self.callid    = request.callid
+        self.diverter  = request.diverter
+        self.ruri      = request.ruri
+        self.sourceip  = request.sourceip
+        self.fromtag   = request.fromtag  
+        self.to        = request.to
+        self['from']   = request['from'] ## from is a python keyword
+        self.totag     = None
+        self.sipclient = sipClientInfo
+        ## Determine who will pay for the call
+        if self.diverter is not None:
+            self.billingParty = 'sip:%s' % self.diverter
+        else:
+            match = re.search(r'(?P<address>sip:[^@]+@[^\s:;>]+)', request['from'])
+            if match is not None:
+                self.billingParty = match.groupdict()['address']
+            else:
+                self.billingParty = 'unknown'
+        ## Determine which provider will handle the call
+        match = re.search(r'sip:[^@]+@(?P<hostname>.*)', self.billingParty)
+        if match is not None:
+            self.provider = match.groupdict()['hostname']
+        else:
+            self.provider = None
+        ## Extract the destination username
+        match = re.search(r'sip:(?P<user>[^@\s]+)@.*', request.to)
+        if match is not None:
+            self.touser = match.groupdict()['user']
+        else:
+            self.touser = 'unknown'
+        self.__initialized = False
+
+    def __str__(self):
+        return ("callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s "
+                "diverter=%(diverter)s sourceip=%(sourceip)s provider=%(provider)s "
+                "timelimit=%(timelimit)s status=%%s" % self % self.status)
+    
+    def __expire(self):
+        self.expired = True
+        sip = SipClient()
+        sip.send(self.callerBye)
+        sip.send(self.calledBye)
+        #time.sleep(0.001)
+        #sip.send(self.callerBye)
+        #sip.send(self.calledBye)
+        self.end() ## we can end here, or wait for SER to call us with a stop command after it receives the BYEs
+
+    def setup(self, request):
+        '''
+        Perform call setup when first called (determine time limit and add timer).
+        
+        If call was previously setup but did not start yet, and the new request
+        changes call parameters (ruri, diverter, ...), then update the call
+        parameters and redo the setup to update the timer and time limit.
+        '''
+        if not self.__initialized: ## setup called for the first time
+            prepaid = PrepaidEngineConnection(self.provider)
+            limit = prepaid.getCallLimit(self)
+            if limit == 'Locked':
+                self.timelimit = 0
+                self.locked = True
+            else:
+                self.timelimit = limit
+            if self.timelimit is None:
+                self.timelimit = CallControlConfig.limit
+                self.prepaid = False
+            else:
+                self.prepaid = True
+            if self.timelimit is not None and self.timelimit > 0:
+                self.timer = ReactorTimer(self.timelimit, self.__expire)
+                self.timer.setName('CallExpiringTimer')
+            self.__initialized = True
+        elif self.__initialized and self.starttime is None: ## call was previously setup but not yet started
+            if self.diverter != request.diverter or self.ruri != request.ruri:
+                ## call parameters have changed.
+                prepaid = PrepaidEngineConnection(self.provider)
+                ## unlock previous prepaid request
+                if self.prepaid and not self.locked:
+                    prepaid.debitBalance(self)
+                ## update call paramaters
+                self.caller.update(request)
+                self.diverter = request.diverter
+                self.ruri     = request.ruri
+                if self.diverter is not None:
+                    self.billingParty = 'sip:%s' % self.diverter
+                ## update time limit and timer
+                limit = prepaid.getCallLimit(self)
+                if limit == 'Locked':
+                    self.timelimit = 0
+                    self.locked = True
+                else:
+                    self.timelimit = limit
+                if self.timelimit is None:
+                    self.timelimit = CallControlConfig.limit
+                    self.prepaid = False
+                else:
+                    self.prepaid = True
+                if self.timelimit is not None and self.timelimit > 0:
+                    self.timer = ReactorTimer(self.timelimit, self.__expire)
+                    self.timer.setName('CallExpiringTimer')
+
+    def start(self, request):
+        assert self.__initialized, "trying to start an unitialized call"
+        if self.starttime is None:
+            self.called = Endpoint(request)
+            self.totag  = request.totag
+            self.starttime = time.time()
+            if self.timer is not None:
+                self.timer.start()
+
+    def update(self, request):
+        assert self.__initialized, "trying to update an unitialized call"
+        if self.fromtag == request.fromtag:
+            self.caller.update(request)
+        elif self.totag == request.fromtag:
+            self.called.update(request)
+        else:
+            warning("trying to update from nonexistent party (from tag mismatch)")
+
+    def end(self, calltime=None):
+        '''
+        Low level end call function that assumes that the caller has removed the call from
+        the list and called _end() only after succesfully removing the call from the list.
+        '''
+        if self.timer:
+            self.timer.cancel()
+        if self.inprogress:
+            self.endtime = time.time()
+            duration = int(round(self.endtime - self.starttime))
+            if calltime:
+                ## call did timeout and was ended by external means (like mediaproxy).
+                ## we were notified of this and we have the actual call duration in `calltime'
+                #self.endtime = self.starttime + calltime
+                self.duration = calltime
+                info("closing call that was already terminated (ended or did timeout)")
+            elif self.expired:
+                self.duration = self.timelimit
+                if duration > self.timelimit + 10:
+                    warning("time difference between sending BYEs and actual closing is > 10 seconds")
+            else:
+                self.duration = duration
+        if self.prepaid and not self.locked:
+            ## even if call was not started we debit 0 seconds anyway to unlock the account
+            prepaid = PrepaidEngineConnection(self.provider)
+            prepaid.debitBalance(self)
+
+    def getbye1(self):
+        '''Generate a BYE as if it came from the caller'''
+        assert self.complete, 'Incomplete call'
+        return ('BYE sip:%(called.contact)s SIP/2.0\r\n'
+                'Via: SIP/2.0/UDP %(sipclient.address)s;branch=%(caller.branch)s\r\n'
+                'From: %(from)s;tag=%(fromtag)s\r\n'
+                'To: %(to)s;tag=%(totag)s\r\n'
+                'Call-ID: %(callid)s\r\n'
+                'CSeq: %(caller.nextcseq)s BYE\r\n'
+                'User-Agent: %(sipclient.name)s\r\n'
+                'Route: <sip:%(touser)s@%(sipclient.proxy)s;ftag=%(fromtag)s;lr=on>\r\n'
+                'Content-Length: 0\r\n'
+                '\r\n') % self
+    def getbye2(self):
+        '''Generate a BYE as if it came from the called'''
+        assert self.complete, 'Incomplete call'
+        return ('BYE sip:%(caller.contact)s SIP/2.0\r\n'
+                'Via: SIP/2.0/UDP %(sipclient.address)s;branch=%(called.branch)s\r\n'
+                'From: %(to)s;tag=%(totag)s\r\n'
+                'To: %(from)s;tag=%(fromtag)s\r\n'
+                'Call-ID: %(callid)s\r\n'
+                'CSeq: %(called.nextcseq)s BYE\r\n'
+                'User-Agent: %(sipclient.name)s\r\n'
+                'Route: <sip:%(touser)s@%(sipclient.proxy)s;ftag=%(fromtag)s;lr=on>\r\n'
+                'Content-Length: 0\r\n'
+                '\r\n') % self
+    def getcp(self): return (None not in (self.called, self.totag))
+    def getip(self): return (self.starttime is not None and self.endtime is None)
+    def getst(self): return self.inprogress and 'in-progress' or 'pending'
+    status     = property(getst)
+    complete   = property(getcp)
+    inprogress = property(getip)
+    callerBye  = property(getbye1)
+    calledBye  = property(getbye2)
+    del getcp, getip, getst, getbye1, getbye2
+
+#
+# End Call data types
+#

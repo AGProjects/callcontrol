@@ -1,3 +1,8 @@
+# Copyright (C) 2005-2008 AG Projects.
+#
+
+"""CDRDatabase related API"""
+
 import time
 import sqlobject
 
