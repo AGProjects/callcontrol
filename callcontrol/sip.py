@@ -39,9 +39,9 @@ config_file.read_settings('SIP', SipConfig)
 
 # check these. what should be enforced by the data type?
 if SipConfig.listen is None:
-    log.fatal('listening address for the SIP client is not defined')
+    log.fatal("listening address for the SIP client is not defined")
 if SipConfig.proxy is None:
-    log.fatal('SIP proxy address is not defined')
+    log.fatal("SIP proxy address is not defined")
 
 ## Determine what is the address we will send from, based on configuration
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -97,7 +97,7 @@ class SipClient(object):
 ##
 
 class SipClientInfo(Structure):
-    '''Describes the SIP client/proxy/connection parameters'''
+    """Describes the SIP client/proxy/connection parameters"""
     def __init__(self):
         Structure.__init__(self)
         self.name    = 'Call Controller'
@@ -134,7 +134,7 @@ class Structure(dict):
         obj = self ## start with ourselves
         for e in elements:
             if not isinstance(obj, dict):
-                raise TypeError, 'unsubscriptable object'
+                raise TypeError, "unsubscriptable object"
             obj = dict.__getitem__(obj, e)
         return obj
     def __setitem__(self, key, value):
@@ -157,7 +157,7 @@ class Structure(dict):
             self.__dict__[key] = value
 
 class Endpoint(Structure):
-    '''Parameters that belong to a given endpoint during a call'''
+    """Parameters that belong to a given endpoint during a call"""
     def __init__(self, request):
         Structure.__init__(self)
         try:
@@ -178,7 +178,7 @@ class Endpoint(Structure):
     #del gethp
 
 class Call(Structure):
-    '''Defines a call'''
+    """Defines a call"""
     def __init__(self, request):
         Structure.__init__(self)
         self.prepaid   = False
@@ -240,13 +240,13 @@ class Call(Structure):
         self.end() ## we can end here, or wait for SER to call us with a stop command after it receives the BYEs
 
     def setup(self, request):
-        '''
+        """
         Perform call setup when first called (determine time limit and add timer).
         
         If call was previously setup but did not start yet, and the new request
         changes call parameters (ruri, diverter, ...), then update the call
         parameters and redo the setup to update the timer and time limit.
-        '''
+        """
         deferred = defer.Deferred()
         prepaid = PrepaidEngineConnection.getConnection(self.provider)
         if not self.__initialized: ## setup called for the first time
@@ -337,7 +337,7 @@ class Call(Structure):
             prepaid.debitBalance(self) # there is basically no result, so we ignore the deferred
 
     def getbye1(self):
-        '''Generate a BYE as if it came from the caller'''
+        """Generate a BYE as if it came from the caller"""
         assert self.complete, 'Incomplete call'
         return ('BYE sip:%(called.contact)s SIP/2.0\r\n'
                 'Via: SIP/2.0/UDP %(sipclient.address)s;branch=%(caller.branch)s\r\n'
@@ -350,7 +350,7 @@ class Call(Structure):
                 'Content-Length: 0\r\n'
                 '\r\n') % self
     def getbye2(self):
-        '''Generate a BYE as if it came from the called'''
+        """Generate a BYE as if it came from the called"""
         assert self.complete, 'Incomplete call'
         return ('BYE sip:%(caller.contact)s SIP/2.0\r\n'
                 'Via: SIP/2.0/UDP %(sipclient.address)s;branch=%(called.branch)s\r\n'

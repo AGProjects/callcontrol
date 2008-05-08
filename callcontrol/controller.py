@@ -5,6 +5,7 @@
 
 import os
 import grp
+import cPickle
 
 from application.configuration import ConfigSection, ConfigFile
 from application.python.queue import EventQueue
@@ -23,7 +24,7 @@ from callcontrol import configuration_filename, calls_file
 
 
 class TimeLimit(int):
-    '''A positive time limit (in seconds) or None'''
+    """A positive time limit (in seconds) or None"""
     def __new__(typ, value):
         if value.lower() == 'none':
             return None
@@ -57,7 +58,7 @@ class NoProviderError(Exception):     pass
 
 
 class CallsMonitor(object):
-    '''Check for staled calls and calls that did timeout and were closed by external means'''
+    """Check for staled calls and calls that did timeout and were closed by external means"""
     def __init__(self, period, application):
         self.application = application
         self.reccall = RecurrentCall(period, self.run)
@@ -69,6 +70,7 @@ class CallsMonitor(object):
         deferred2 = self.application.db.getTimedoutCalls(self.application.calls)
         deferred2.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_timedout])
         defer.DeferredList([deferred1, deferred2]).addCallback(self._finish_checks)
+        return KeepRunning
 
     def shutdown(self):
         self.reccall.cancel()
@@ -149,15 +151,20 @@ class CallControlProtocol(LineOnlyReceiver):
         deferred = call.setup(req)
         deferred.addCallbacks(callback=self._CC_finish_init, errback=self._send_error_reply, callbackArgs=[req])
 
-    def _CC_finish_init(self, call, req):
-        if call.locked: ## prepaid account already locked by another call
-            call.end()
-            req.deferred.callback('Locked')
-        elif call.timelimit == 0: ## prepaid account with no credit
-            call.end()
-            req.deferred.callback('No credit')
-        else:
-            req.deferred.callback('Ok')
+    def _CC_finish_init(self, value, req):
+        try:
+            call = self.factory.application.calls[req.callid]
+            if call.locked: ## prepaid account already locked by another call
+                call.end()
+                req.deferred.callback('Locked')
+            elif call.timelimit == 0: ## prepaid account with no credit
+                call.end()
+                req.deferred.callback('No credit')
+            else:
+                req.deferred.callback('Ok')
+        except KeyError:
+            log.error("call disappeared before we could finish initializing it")
+            req.deferred.callback('Error')
 
     def _CC_start(self, req):
         try:
@@ -219,6 +226,7 @@ class CallControlServer(object):
             gid = grp.getgrnam(self.group)[2]
             mode = 0660
         except KeyError, IndexError:
+            gid = -1
             mode = 0666
         reactor.listenUNIX(address=self.path, factory=CallControlFactory(self), mode=mode)
         ## Make it writable only to the SIP proxy group members
@@ -227,8 +235,6 @@ class CallControlServer(object):
         except OSError:
             log.warn("couldn't set access rights for %s." % path)
             log.warn("SER may not be able to communicate with us!")
-        except NameError:
-            pass
 
         ## Then setup the CallsMonitor
         self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
@@ -262,16 +268,16 @@ class CallControlServer(object):
                             call.timer = 'running' ## temporary mark that this timer was running
                         else:
                             call.timer = 'idle'    ## temporary mark that this timer was not running
-                failedDump = False
+                failed_dump = False
                 try:
                     try:
                         cPickle.dump(self.calls, f)
                     except Exception, why:
-                        warning('failed to dump call list: %s' % str(why))
-                        failedDump = True
+                        log.warn("failed to dump call list: %s" % why)
+                        failed_dump = True
                 finally:
                     f.close()
-                if failedDump:
+                if failed_dump:
                     try:    os.unlink(calls_file)
                     except: pass
             self.calls = {}
@@ -286,12 +292,12 @@ class CallControlServer(object):
             try:
                 self.calls = cPickle.load(f)
             except Exception, why:
-                log.warn('failed to load calls saved in the previous session: %s' % str(why))
+                log.warn("failed to load calls saved in the previous session: %s" % why)
             f.close()
             try:    os.unlink(callsFile)
             except: pass
             if self.calls:
-                log.info('restoring calls saved from previous session')
+                log.info("restoring calls saved from previous session")
                 ## the calls in the 2 sets below are never overlapping because closed and terminated
                 ## calls have different database fingerprints. so the dictionary update below is safe
                 try:
@@ -310,11 +316,11 @@ class CallControlServer(object):
                             continue
                         if call.timer == 'running':
                             now = time.time()
-                            rest = call.starttime + call.timelimit - now
-                            if rest < 0:
+                            remain = call.starttime + call.timelimit - now
+                            if remain < 0:
                                 call.timelimit = int(round(now - call.starttime))
-                                rest = 0
-                            call._setup_timer(rest)
+                                remain = 0
+                            call._setup_timer(remain)
                             call.timer.start()
                         elif call.timer == 'idle':
                             call._setup_timer()
@@ -337,7 +343,7 @@ class CallControlServer(object):
                         log.info("removed %d already terminated call%s" % (count, 's'*(count!=1)))
 
 class Request(Structure):
-    '''A request parsed into a structure based on request type'''
+    """A request parsed into a structure based on request type"""
     __methods = {'init':   ('callid', 'contact', 'cseq', 'diverter', 'ruri', 'sourceip', 'from', 'fromtag', 'to'),
                  'start':  ('callid', 'contact', 'totag'),
                  'update': ('callid', 'cseq', 'fromtag'),
@@ -346,13 +352,13 @@ class Request(Structure):
     def __init__(self, message):
         Structure.__init__(self)
         try:    message + ''
-        except: raise ValueError, 'message should be a string'
+        except: raise ValueError, "message should be a string"
         lines = [line.strip() for line in message.splitlines() if line.strip()]
         if not lines:
             raise InvalidRequestError, 'missing input'
         cmd = lines[0].lower()
         if cmd not in self.__methods.keys():
-            raise InvalidRequestError, 'unknown request: %s' % cmd
+            raise InvalidRequestError, "unknown request: %s" % cmd
         try:
             parameters = dict([re.split(r':\s+', l, 1) for l in lines[1:]])
         except ValueError:
@@ -361,7 +367,7 @@ class Request(Structure):
             try: 
                 parameters[p]
             except KeyError:
-                raise InvalidRequestError, 'missing %s from request' % p
+                raise InvalidRequestError, "missing %s from request" % p
         self.cmd = cmd
         self.update(parameters)
         if cmd=='init' and self.diverter.lower()=='none':

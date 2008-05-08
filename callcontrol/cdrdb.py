@@ -15,7 +15,7 @@ from twisted.internet import defer, reactor
 from callcontrol import configuration_filename
 
 class RadacctTable(str):
-    '''A radacct table name'''
+    """A radacct table name"""
     def __init__(self, value):
         str.__init__(self, value)
     def __get__(self, obj, type_=None):
@@ -42,7 +42,7 @@ config_file.read_settings('CDRDatabase', CDRDatabaseConfig)
 class CDRException(Exception): pass
 
 class CDRDatabase(object):
-    '''Interface with the CDR database'''
+    """Interface with the CDR database"""
     class CDRTask(object):
         def __init__(self, deferred, tasktype, **kwargs):
             self.deferred = deferred
@@ -61,21 +61,21 @@ class CDRDatabase(object):
         self.queue.stop()
 
     def getTerminatedCalls(self, calls):
-        '''
+        """
         Retrieve those calls from the ones in progress that were already terminated by caller/called.
 
         Returns a Deferred. Callback will be called with list of call ids.
-        '''
+        """
         deferred = defer.Deferred()
         self.queue.put(CDRTask(deferred, 'terminated', calls=calls))
         return deferred
 
     def getTimedoutCalls(self, calls):
-        '''
+        """
         Retrieve those calls from the ones in progress that did timeout and were closed by mediaproxy.
 
         Returns a Deferred. Callback will be called with list of call ids.
-        '''
+        """
         deferred = defer.Deferred()
         self.queue.put(CDRTask(deferred, 'timedout', calls=calls))
         return deferred
