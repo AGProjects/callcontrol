@@ -165,8 +165,6 @@ class PrepaidEngineFactory(ReconnectingClientFactory):
 
 
 class PrepaidEngine(object):
-    __metaclass__ = Singleton
-
     def __init__(self, address=None):
         self.address = address or PrepaidConfig.address
         self.factory = PrepaidEngineFactory(self)
@@ -185,3 +183,14 @@ class PrepaidEngine(object):
         if self.factory.proto is not None:
             return self.factory.proto.send_request(req).deferred
         return defer.succeed(None)
+
+
+class PrepaidEngineConnection(object):
+    __metaclass__ = Singleton
+
+    def __init__(self):
+        self.connections = {'default': PrepaidEngine()}
+    @staticmethod
+    def getConnection(provider='default'):
+        conn = PrepaidEngineConnection()
+        return conn.connections.get(provider, conn.connections['default'])

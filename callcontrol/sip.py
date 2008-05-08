@@ -156,50 +156,6 @@ class Structure(dict):
         for key, value in other.items():
             self.__dict__[key] = value
 
-class Request(Structure):
-    '''A request parsed into a structure based on request type'''
-    __methods = {'init':   ('callid', 'contact', 'cseq', 'diverter', 'ruri', 'sourceip', 'from', 'fromtag', 'to'),
-                 'start':  ('callid', 'contact', 'totag'),
-                 'update': ('callid', 'cseq', 'fromtag'),
-                 'stop':   ('callid',),
-                 'debug':  ()}
-    def __init__(self, message):
-        Structure.__init__(self)
-        try:    message + ''
-        except: raise ValueError, 'message should be a string'
-        lines = [line.strip() for line in message.splitlines() if line.strip()]
-        if not lines:
-            raise InvalidRequestError, 'missing input'
-        cmd = lines[0].lower()
-        if cmd not in self.__methods.keys():
-            raise InvalidRequestError, 'unknown request: %s' % cmd
-        try:
-            parameters = dict([re.split(r':\s+', l, 1) for l in lines[1:]])
-        except ValueError:
-            raise InvalidRequestError, "badly formatted request"
-        for p in self.__methods[cmd]:
-            try: 
-                parameters[p]
-            except KeyError:
-                raise InvalidRequestError, 'missing %s from request' % p
-        self.cmd = cmd
-        self.update(parameters)
-        if cmd=='init' and self.diverter.lower()=='none':
-            self.diverter = None
-    def __str__(self):
-        if self.cmd == 'init':
-            return "%(cmd)s: callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s" % self
-        elif self.cmd == 'start':
-            return "%(cmd)s: callid=%(callid)s" % self
-        elif self.cmd == 'update':
-            return "%(cmd)s: callid=%(callid)s cseq=%(cseq)s fromtag=%(fromtag)s" % self
-        elif self.cmd == 'stop':
-            return "%(cmd)s: callid=%(callid)s" % self
-        elif self.cmd == 'debug':
-            return "%(cmd)s" % self
-        else:
-            return Structure.__str__(self)
-
 class Endpoint(Structure):
     '''Parameters that belong to a given endpoint during a call'''
     def __init__(self, request):
@@ -291,51 +247,53 @@ class Call(Structure):
         changes call parameters (ruri, diverter, ...), then update the call
         parameters and redo the setup to update the timer and time limit.
         '''
+        deferred = defer.Deferred()
+        prepaid = PrepaidEngineConnection.getConnection(self.provider)
         if not self.__initialized: ## setup called for the first time
-            prepaid = PrepaidEngineConnection(self.provider)
-            limit = prepaid.getCallLimit(self)
-            if limit == 'Locked':
-                self.timelimit = 0
-                self.locked = True
-            else:
-                self.timelimit = limit
-            if self.timelimit is None:
-                self.timelimit = CallControlConfig.limit
-                self.prepaid = False
-            else:
-                self.prepaid = True
-            if self.timelimit is not None and self.timelimit > 0:
-                self.timer = ReactorTimer(self.timelimit, self.__expire)
-                self.timer.setName('CallExpiringTimer')
-            self.__initialized = True
+            prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred])
+            return deferred
         elif self.__initialized and self.starttime is None: ## call was previously setup but not yet started
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
-                prepaid = PrepaidEngineConnection(self.provider)
                 ## unlock previous prepaid request
                 if self.prepaid and not self.locked:
-                    prepaid.debitBalance(self)
-                ## update call paramaters
-                self.caller.update(request)
-                self.diverter = request.diverter
-                self.ruri     = request.ruri
-                if self.diverter is not None:
-                    self.billingParty = 'sip:%s' % self.diverter
-                ## update time limit and timer
-                limit = prepaid.getCallLimit(self)
-                if limit == 'Locked':
-                    self.timelimit = 0
-                    self.locked = True
-                else:
-                    self.timelimit = limit
-                if self.timelimit is None:
-                    self.timelimit = CallControlConfig.limit
-                    self.prepaid = False
-                else:
-                    self.prepaid = True
-                if self.timelimit is not None and self.timelimit > 0:
-                    self.timer = ReactorTimer(self.timelimit, self.__expire)
-                    self.timer.setName('CallExpiringTimer')
+                    prepaid.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+                    return deferred
+        deferred.callback(None)
+        return deferred
+
+    def _setup_finish_calllimit(self, limit, deferred):
+        if limit == 'Locked':
+            self.timelimit = 0
+            self.locked = True
+        else:
+            self.timelimit = limit
+        if self.timelimit is None:
+            self.timelimit = CallControlConfig.limit
+            self.prepaid = False
+        else:
+            self.prepaid = True
+        if self.timelimit is not None and self.timelimit > 0:
+            self._setup_timer()
+        self.__initialized = True
+        deferred.callback(None)
+
+    def _setup_finish_debitbalance(self, value, deferred):
+        ## update call paramaters
+        self.caller.update(request)
+        self.diverter = request.diverter
+        self.ruri     = request.ruri
+        if self.diverter is not None:
+            self.billingParty = 'sip:%s' % self.diverter
+        ## update time limit and timer
+        prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+
+    def _setup_timer(self, timeout=self.timelimit):
+        self.timer = ReactorTimer(self.timelimit, self.__expire)
+        self.timer.setName('CallExpiringTimer')
+
+    def _setup_error(self, fail, deferred):
+        deferred.errback(fail)
 
     def start(self, request):
         assert self.__initialized, "trying to start an unitialized call"
@@ -353,13 +311,9 @@ class Call(Structure):
         elif self.totag == request.fromtag:
             self.called.update(request)
         else:
-            warning("trying to update from nonexistent party (from tag mismatch)")
+            log.warn("trying to update from nonexistent party (from tag mismatch)")
 
     def end(self, calltime=None):
-        '''
-        Low level end call function that assumes that the caller has removed the call from
-        the list and called _end() only after succesfully removing the call from the list.
-        '''
         if self.timer:
             self.timer.cancel()
         if self.inprogress:
@@ -370,17 +324,17 @@ class Call(Structure):
                 ## we were notified of this and we have the actual call duration in `calltime'
                 #self.endtime = self.starttime + calltime
                 self.duration = calltime
-                info("closing call that was already terminated (ended or did timeout)")
+                log.info("closing call that was already terminated (ended or did timeout)")
             elif self.expired:
                 self.duration = self.timelimit
                 if duration > self.timelimit + 10:
-                    warning("time difference between sending BYEs and actual closing is > 10 seconds")
+                    log.warn("time difference between sending BYEs and actual closing is > 10 seconds")
             else:
                 self.duration = duration
         if self.prepaid and not self.locked:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
-            prepaid = PrepaidEngineConnection(self.provider)
-            prepaid.debitBalance(self)
+            prepaid = PrepaidEngineConnection.getConnection(self.provider)
+            prepaid.debitBalance(self) # there is basically no result, so we ignore the deferred
 
     def getbye1(self):
         '''Generate a BYE as if it came from the caller'''
