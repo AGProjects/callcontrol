@@ -6,4 +6,4 @@
 __version__ = "1.5.0"
 
 configuration_filename = 'config.ini'
-calls_file = 'calls.dat'
+backup_calls_file = 'calls.dat'

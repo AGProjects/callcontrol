@@ -5,7 +5,9 @@
 
 import os
 import grp
+import re
 import cPickle
+import time
 
 from application.configuration import ConfigSection, ConfigFile
 from application.python.queue import EventQueue
@@ -18,9 +20,10 @@ from twisted.internet import reactor, defer
 from twisted.python import failure
 
 from callcontrol.scheduler import RecurrentCall, KeepRunning
-from callcontrol.cdrdb import CDRDatabase
-from callcontrol.sip import Structure
-from callcontrol import configuration_filename, calls_file
+from callcontrol.cdrdb import CDRDatabase, CDRDatabaseError
+from callcontrol.sip import Structure, Call, SipClient
+from callcontrol.prepaid import PrepaidEngineConnections
+from callcontrol import configuration_filename, backup_calls_file
 
 
 class TimeLimit(int):
@@ -37,8 +40,9 @@ class TimeLimit(int):
         return limit
 
 class CallControlConfig(ConfigSection):
-    _dataTypes = {'limit': TimeLimit}
-    socket        = '/var/run/callcontrol/socket'
+    _datatypes = {'limit': TimeLimit}
+#    socket        = "%s/socket" % process.runtime_directory
+    socket        = "/var/run/callcontrol.sock"
     group         = 'openser'
     limit         = None
     timeout       = 24*60*60 ## timeout calls that are stale for more than 24 hours.
@@ -55,6 +59,7 @@ config_file.read_settings('CallControl', CallControlConfig)
 class CommandError(Exception):        pass
 class CallControlError(Exception):    pass
 class NoProviderError(Exception):     pass
+class InvalidRequestError(Exception): pass
 
 
 class CallsMonitor(object):
@@ -80,14 +85,14 @@ class CallsMonitor(object):
         for callid, callinfo in calls.items():
             call = self.application.calls.get(callid)
             if call:
-                del self.application.calls[callid]
+                self.application.clean_call(callid)
                 clean_function(call, callinfo)
                 count += 1
         if count > 0:
             log.info("removed %d externally closed call%s" % (count, 's'*(count!=1)))
 
-    def _err_handle(self, failure):
-        log.error("Couldn't query database for terminated/timedout calls: %s" % failure.value)
+    def _err_handle(self, fail):
+        log.error("Couldn't query database for terminated/timedout calls: %s" % fail.value)
 
     def _handle_terminated(self, call, callinfo):
         call.end(calltime=callinfo['duration'])
@@ -98,18 +103,19 @@ class CallsMonitor(object):
         sip.send(call.calledBye)
         call.end()
 
-    def _finish_checks(self, value)
+    def _finish_checks(self, value):
         ## Also do the rest of the checking
+        now = time.time()
         staled = []
         nosetup = []
         for callid, call in self.application.calls.items():
             if not call.complete and (now - call.created >= CallControlConfig.setupTime):
-                del self.application.calls[callid]
+                self.application.clean_call(callid)
                 nosetup.append(call)
             elif call.inprogress and call.timer is not None:
                 continue ## this call will be expired by its own timer
-            elif now - call.created >= CallControlConfig.stalePeriod:
-                del self.application.calls[callid]
+            elif now - call.created >= CallControlConfig.timeout:
+                self.application.clean_call(callid)
                 staled.append(call)
         ## Terminate staled
         for call in staled:
@@ -127,13 +133,26 @@ class CallsMonitor(object):
 
 class CallControlProtocol(LineOnlyReceiver):
     def lineReceived(self, line):
-        req = Request(line)
-        def _unknown_handler(req):
-            req.deferred.errback(failure.Failure(CommandError(req)))
-        getattr(self, '_CC_%s' % req.cmd, _unknown_handler)(req)
-        req.deferred.addCallbacks(callback=self._send_reply, errback=self._send_error_reply)
+        try:
+            req = Request(line)
+        except InvalidRequestError, e:
+            self._send_error_reply(failure.Failure(e))
+        else:
+            log.info('Got request: %s' % str(req)) #FIXME
+            def _unknown_handler(req):
+                req.deferred.errback(failure.Failure(CommandError(req)))
+            try:
+                getattr(self, '_CC_%s' % req.cmd, _unknown_handler)(req)
+            except Exception, e:
+                self._send_error_reply(failure.Failure(e))
+            else:
+                req.deferred.addCallbacks(callback=self._send_reply, errback=self._send_error_reply)
+
+    def connectionMade(self):
+        pass
 
     def _send_reply(self, msg):
+        log.info('Sent reply: %s' % msg) #FIXME
         self.sendLine(msg)
 
     def _send_error_reply(self, fail):
@@ -144,9 +163,10 @@ class CallControlProtocol(LineOnlyReceiver):
         try:
             call = self.factory.application.calls[req.callid]
         except KeyError:
-            call = Call(req)
+            call = Call(req, self.factory.application)
             if call.provider is None:
                 req.deferred.callback('No provider')
+                return
             self.factory.application.calls[req.callid] = call
         deferred = call.setup(req)
         deferred.addCallbacks(callback=self._CC_finish_init, errback=self._send_error_reply, callbackArgs=[req])
@@ -154,6 +174,10 @@ class CallControlProtocol(LineOnlyReceiver):
     def _CC_finish_init(self, value, req):
         try:
             call = self.factory.application.calls[req.callid]
+        except KeyError:
+            log.error("call disappeared before we could finish initializing it")
+            req.deferred.callback('Error')
+        else:
             if call.locked: ## prepaid account already locked by another call
                 call.end()
                 req.deferred.callback('Locked')
@@ -162,40 +186,37 @@ class CallControlProtocol(LineOnlyReceiver):
                 req.deferred.callback('No credit')
             else:
                 req.deferred.callback('Ok')
-        except KeyError:
-            log.error("call disappeared before we could finish initializing it")
-            req.deferred.callback('Error')
 
     def _CC_start(self, req):
         try:
             call = self.factory.application.calls[req.callid]
         except KeyError:
             req.deferred.callback('Not found')
-            return
-        call.start(req)
-        req.deferred.callback('Ok')
+        else:
+            call.start(req)
+            req.deferred.callback('Ok')
 
     def _CC_update(self, req):
         try:
             call = self.factory.application.calls[req.callid]
         except KeyError:
             req.deferred.callback('Not found')
-            return
-        call.update(req)
-        req.deferred.callback('Ok')
+        else:
+            call.update(req)
+            req.deferred.callback('Ok')
 
     def _CC_stop(self, req):
         try:
             call = self.factory.application.calls[req.callid]
-            del self.factory.application.calls[req.callid]
         except KeyError:
             req.deferred.callback('Not found')
-            return
-        call.end(req)
-        req.deferred.callback('Ok')
+        else:
+            self.factory.application.clean_call(req.callid)
+            call.end()
+            req.deferred.callback('Ok')
 
     def _CC_debug(self, req):
-        pass #FIXME What to do?
+        log.debug(str(self.factory.application.calls))
 
 
 class CallControlFactory(Factory):
@@ -214,13 +235,33 @@ class CallControlServer(object):
         except OSError:
             pass
         
-        self.db = CDRDatabase()
+        self.listening = None
+        self.sipclient = None
+        self.engines = None
         self.monitor = None
+        self.db = CDRDatabase()
         
         self.calls = {}
         self._restore_calls()
 
+    def clean_call(self, callid):
+        try:
+            del self.calls[callid]
+        except KeyError:
+            pass
+
     def run(self):
+        ## Do the startup stuff
+        self.on_startup()
+        ## And start reactor
+        reactor.run()
+        ## And do the shutdown
+        self.on_shutdown()
+
+    def stop(self):
+        reactor.stop()
+
+    def on_startup(self):
         ## First set up listening on the unix socket
         try:
             gid = grp.getgrnam(self.group)[2]
@@ -228,38 +269,44 @@ class CallControlServer(object):
         except KeyError, IndexError:
             gid = -1
             mode = 0666
-        reactor.listenUNIX(address=self.path, factory=CallControlFactory(self), mode=mode)
+        self.listening = reactor.listenUNIX(address=self.path, factory=CallControlFactory(self), mode=mode)
         ## Make it writable only to the SIP proxy group members
         try:
             os.chown(self.path, -1, gid)
         except OSError:
-            log.warn("couldn't set access rights for %s." % path)
+            log.warn("couldn't set access rights for %s." % self.path)
             log.warn("SER may not be able to communicate with us!")
 
         ## Then setup the CallsMonitor
         self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
+        ## Initialize SipClient
+        self.sipclient = SipClient()
+        ## Open the connection to the prepaid engines
+        self.engines = PrepaidEngineConnections()
 
-        ## And start reactor
-        reactor.run()
-
-    def stop(self):
+    def on_shutdown(self):
+        if self.listening is not None:
+            self.listening.stopListening()
+        if self.sipclient is not None:
+            self.sipclient.shutdown()
+        if self.engines is not None:
+            self.engines.shutdown()
         if self.monitor is not None:
-            self.monitor.showdown()
+            self.monitor.shutdown()
         self.db.close()
         self._save_calls()
-        reactor.stop()
     
-    def _save_calls():
+    def _save_calls(self):
         if self.calls:
             log.info('saving calls')
-            calls_file = '%s/%s' % (process.runtime_directory, calls_file)
+            calls_file = '%s/%s' % (process.runtime_directory, backup_calls_file)
             try:
                 f = open(calls_file, 'w')
             except:
                 pass
             else:
                 for call in self.calls.values():
-                    call.lock = None
+                    call.application = None
                     ## we will mark timers with 'running' or 'idle', depending on their current state,
                     ## to be able to correctly restore them later (Timer objects cannot be pickled)
                     if call.timer is not None:
@@ -282,10 +329,10 @@ class CallControlServer(object):
                     except: pass
             self.calls = {}
 
-    def _restore_calls():
-        calls_file = '%s/%s' % (process.runtime_directory, calls_file)
+    def _restore_calls(self):
+        calls_file = '%s/%s' % (process.runtime_directory, backup_calls_file)
         try:
-            f = open(callsFile, 'r')
+            f = open(calls_file, 'r')
         except:
             pass
         else:
@@ -294,7 +341,7 @@ class CallControlServer(object):
             except Exception, why:
                 log.warn("failed to load calls saved in the previous session: %s" % why)
             f.close()
-            try:    os.unlink(callsFile)
+            try:    os.unlink(calls_file)
             except: pass
             if self.calls:
                 log.info("restoring calls saved from previous session")
@@ -314,16 +361,6 @@ class CallControlServer(object):
                             callinfo['call'] = call
                             call.timer = None
                             continue
-                        if call.timer == 'running':
-                            now = time.time()
-                            remain = call.starttime + call.timelimit - now
-                            if remain < 0:
-                                call.timelimit = int(round(now - call.starttime))
-                                remain = 0
-                            call._setup_timer(remain)
-                            call.timer.start()
-                        elif call.timer == 'idle':
-                            call._setup_timer()
                     ## close all calls that were already terminated or did timeout 
                     count = 0
                     sip = SipClient()
@@ -341,6 +378,18 @@ class CallControlServer(object):
                             count += 1
                     if count > 0:
                         log.info("removed %d already terminated call%s" % (count, 's'*(count!=1)))
+                for callid, call in self.calls.items():
+                    call.application = self
+                    if call.timer == 'running':
+                        now = time.time()
+                        remain = call.starttime + call.timelimit - now
+                        if remain < 0:
+                            call.timelimit = int(round(now - call.starttime))
+                            remain = 0
+                        call._setup_timer(remain)
+                        call.timer.start()
+                    elif call.timer == 'idle':
+                        call._setup_timer()
 
 class Request(Structure):
     """A request parsed into a structure based on request type"""

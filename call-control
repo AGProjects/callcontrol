@@ -17,15 +17,15 @@ if __name__ == '__main__':
     fullname = 'SIP call-control'
     description = 'Implementation of call-control for SIP'
 
-    config_directory = '/etc/callcontrol'
+    config_directory = '/home/luci/work/callcontrol'
     runtime_directory = '/var/run/callcontrol'
     default_pid = "%s/%s.pid" % (runtime_directory, name)
 
-    parser = OptionParser(version=ver)
+    parser = OptionParser(version="%%prog %s" % callcontrol.__version__)
     parser.add_option("--no-fork", action="store_false", dest="fork", default=1,
                       help="run the process in the foreground")
-    parser.add_option("--pid", dest="pid_file", default='/var/run/callcontrol.pid',
-                      help="pid file (/var/run/callcontrol/callcontrol.pid)", 
+    parser.add_option("--pid", dest="pid_file", default='/var/run/callcontrol/call-control.pid',
+                      help="pid file (/var/run/callcontrol/call-control.pid)", 
                       metavar="FILE")
     (options, args) = parser.parse_args()
 
@@ -63,5 +63,4 @@ if __name__ == '__main__':
     cserver.run()
 
     if not options.fork:
-        #from application.debug.memory import *
         memory_dump()

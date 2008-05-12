@@ -10,15 +10,19 @@ but will ignore them completely.
 
 import time
 import random
+import socket
+import re
 
-from application.configuration import ConfigSection, ConfigFie
+from application.configuration import ConfigSection, ConfigFile
 from application.configuration.datatypes import NetworkAddress, EndpointAddress
 from application.python.util import Singleton
 from application import log
 
 from twisted.internet.protocol import DatagramProtocol
-from twisted.internet import reactor
+from twisted.internet.error import AlreadyCalled
+from twisted.internet import reactor, defer
 
+from callcontrol.prepaid import PrepaidEngineConnections
 from callcontrol import configuration_filename
 
 ##
@@ -29,7 +33,7 @@ class SipProxyAddress(EndpointAddress):
     _name = 'SIP proxy address'
 
 class SipConfig(ConfigSection):
-    _dataTypes = {'listen': NetworkAddress, 'proxy': SipProxyAddress}
+    _datatypes = {'listen': NetworkAddress, 'proxy': SipProxyAddress}
     listen     = ('0.0.0.0', 5070)
     proxy      = None
 
@@ -83,10 +87,16 @@ class SipClient(object):
         self.listen = listen or SipConfig.listen
         self.proxy = proxy or SipConfig.proxy
         self.protocol = SipNullClientProtocol()
-        reactor.listenUDP(self.listen, self.protocol)
+        self.__shutdown = False
+        self.listening = reactor.listenUDP(self.listen[1], self.protocol)
 
     def send(self, data):
-        self.protocol.transport.write(data, self.proxy)
+        if not self.__shutdown:
+            self.protocol.transport.write(data, self.proxy)
+
+    def shutdown(self):
+        self.__shutdown = True
+        self.listening.stopListening()
 
 #
 # End SIP client implementation
@@ -95,16 +105,6 @@ class SipClient(object):
 ##
 ## Call data types
 ##
-
-class SipClientInfo(Structure):
-    """Describes the SIP client/proxy/connection parameters"""
-    def __init__(self):
-        Structure.__init__(self)
-        self.name    = 'Call Controller'
-        self.address = '%s:%d' % SipConfig._sending_address
-        self.proxy   = '%s:%d' % SipConfig.proxy
-
-sipClientInfo = SipClientInfo()
 
 
 class InvalidRequestError(Exception): pass
@@ -120,11 +120,15 @@ class ReactorTimer(object):
 
     def start(self):
         if self.dcall is None:
-            self.dcall = reactor.callLater(self.delay, self.function, *args, **kwargs)
+            self.dcall = reactor.callLater(self.delay, self.function, *self.args, **self.kwargs)
 
     def cancel(self):
         if self.dcall is not None:
-            self.dcall.cancel()
+            try:
+                self.dcall.cancel()
+            except AlreadyCalled:
+                self.dcall = None
+
 
 class Structure(dict):
     def __init__(self):
@@ -156,6 +160,18 @@ class Structure(dict):
         for key, value in other.items():
             self.__dict__[key] = value
 
+
+class SipClientInfo(Structure):
+    """Describes the SIP client/proxy/connection parameters"""
+    def __init__(self):
+        Structure.__init__(self)
+        self.name    = 'Call Controller'
+        self.address = '%s:%d' % SipConfig._sending_address
+        self.proxy   = '%s:%d' % SipConfig.proxy
+
+sipClientInfo = SipClientInfo()
+
+
 class Endpoint(Structure):
     """Parameters that belong to a given endpoint during a call"""
     def __init__(self, request):
@@ -179,7 +195,7 @@ class Endpoint(Structure):
 
 class Call(Structure):
     """Defines a call"""
-    def __init__(self, request):
+    def __init__(self, request, application):
         Structure.__init__(self)
         self.prepaid   = False
         self.locked    = False ## if the account is locked because another call is in progress
@@ -223,6 +239,7 @@ class Call(Structure):
         else:
             self.touser = 'unknown'
         self.__initialized = False
+        self.application = application
 
     def __str__(self):
         return ("callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s "
@@ -237,6 +254,7 @@ class Call(Structure):
         #time.sleep(0.001)
         #sip.send(self.callerBye)
         #sip.send(self.calledBye)
+        self.application.clean_call(self.callid)
         self.end() ## we can end here, or wait for SER to call us with a stop command after it receives the BYEs
 
     def setup(self, request):
@@ -248,16 +266,16 @@ class Call(Structure):
         parameters and redo the setup to update the timer and time limit.
         """
         deferred = defer.Deferred()
-        prepaid = PrepaidEngineConnection.getConnection(self.provider)
+        prepaid = PrepaidEngineConnections.getConnection(self.provider)
         if not self.__initialized: ## setup called for the first time
-            prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred])
+            prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
         elif self.__initialized and self.starttime is None: ## call was previously setup but not yet started
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
                 ## unlock previous prepaid request
                 if self.prepaid and not self.locked:
-                    prepaid.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+                    prepaid.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[request, deferred], errbackArgs=[deferred])
                     return deferred
         deferred.callback(None)
         return deferred
@@ -278,7 +296,7 @@ class Call(Structure):
         self.__initialized = True
         deferred.callback(None)
 
-    def _setup_finish_debitbalance(self, value, deferred):
+    def _setup_finish_debitbalance(self, value, request, deferred):
         ## update call paramaters
         self.caller.update(request)
         self.diverter = request.diverter
@@ -288,9 +306,10 @@ class Call(Structure):
         ## update time limit and timer
         prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
 
-    def _setup_timer(self, timeout=self.timelimit):
-        self.timer = ReactorTimer(self.timelimit, self.__expire)
-        self.timer.setName('CallExpiringTimer')
+    def _setup_timer(self, timeout=None):
+        if timeout is None:
+            timeout = self.timelimit
+        self.timer = ReactorTimer(timeout, self.__expire)
 
     def _setup_error(self, fail, deferred):
         deferred.errback(fail)
@@ -333,8 +352,9 @@ class Call(Structure):
                 self.duration = duration
         if self.prepaid and not self.locked:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
-            prepaid = PrepaidEngineConnection.getConnection(self.provider)
+            prepaid = PrepaidEngineConnections.getConnection(self.provider)
             prepaid.debitBalance(self) # there is basically no result, so we ignore the deferred
+        self.timer = None
 
     def getbye1(self):
         """Generate a BYE as if it came from the caller"""

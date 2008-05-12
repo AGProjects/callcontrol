@@ -11,6 +11,7 @@ from application.python.queue import EventQueue
 from application import log
 
 from twisted.internet import defer, reactor
+from twisted.python import failure
 
 from callcontrol import configuration_filename
 
@@ -22,9 +23,9 @@ class RadacctTable(str):
         return time.strftime(self)
 
 class CDRDatabaseConfig(ConfigSection):
-    _dataTypes = {'table': RadacctTable}
-    user           = None
-    password       = None
+    _datatypes = {'table': RadacctTable}
+    user           = ''
+    password       = ''
     host           = 'localhost'
     database       = 'radius'
     table          = RadacctTable('radacct%Y%m')
@@ -39,7 +40,7 @@ class CDRDatabaseConfig(ConfigSection):
 config_file = ConfigFile(configuration_filename)
 config_file.read_settings('CDRDatabase', CDRDatabaseConfig)
 
-class CDRException(Exception): pass
+class CDRDatabaseError(Exception): pass
 
 class CDRDatabase(object):
     """Interface with the CDR database"""
@@ -67,7 +68,7 @@ class CDRDatabase(object):
         Returns a Deferred. Callback will be called with list of call ids.
         """
         deferred = defer.Deferred()
-        self.queue.put(CDRTask(deferred, 'terminated', calls=calls))
+        self.queue.put(CDRDatabase.CDRTask(deferred, 'terminated', calls=calls))
         return deferred
 
     def getTimedoutCalls(self, calls):
@@ -77,30 +78,33 @@ class CDRDatabase(object):
         Returns a Deferred. Callback will be called with list of call ids.
         """
         deferred = defer.Deferred()
-        self.queue.put(CDRTask(deferred, 'timedout', calls=calls))
+        self.queue.put(CDRDatabase.CDRTask(deferred, 'timedout', calls=calls))
         return deferred
 
     def query(self, task):
         def _unknown_task(task):
-            raise CDRException("Got unknown task to handle: %s" % task.tasktype)
-        return getattr(self, '_CDR_%' % task.tasktype, _unknown_task)(task)
+            raise CDRDatabaseError("Got unknown task to handle: %s" % task.tasktype)
+        return getattr(self, '_CDR_%s' % task.tasktype, _unknown_task)(task)
 
     def _handle_task(self, task):
         try:
-            reactor.callFromThread(task.deferred.callback, query(task))
+            reactor.callFromThread(task.deferred.callback, self.query(task))
         except Exception, e:
             reactor.callFromThread(task.deferred.errback, failure.Failure(e))
 
     def _CDR_terminated(self, task):
         try:
             calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
+            if not calls:
+                return {}
             ids = "(%s)" % ','.join(calls.keys())
-            query = '''SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
+            table = CDRDatabaseConfig.table
+            query = """SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
                               %(fromTagField)s AS fromtag, %(toTagField)s AS totag
-                       FROM   %(table)s
-                       WHERE  %(sessionIdField)s IN %%s AND
-                              %(stopInfoField)s IS NOT NULL''' % CDRDatabaseConfig.__dict__ % ids
-            rows = sqlobject.queryAll(query)
+                       FROM   %%(table)s
+                       WHERE  %(sessionIdField)s IN %%(ids)s AND
+                              %(stopInfoField)s IS NOT NULL""" % CDRDatabaseConfig.__dict__ % locals()
+            rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
                     call = calls[row[0]]
@@ -109,19 +113,23 @@ class CDRDatabase(object):
                 return call.fromtag==row[2] and call.totag==row[3]
             return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
         except Exception, e:
-            raise CDRException("Exception while querying for terminated calls %s." % e)
+            log.error('Query failed: %s' % query)
+            raise CDRDatabaseError("Exception while querying for terminated calls %s." % e)
 
     def _CDR_timedout(self, task):
         try:
             calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
+            if not calls:
+                return {}
             ids = "(%s)" % ','.join(calls.keys())
+            table = CDRDatabaseConfig.table
             query = '''SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
                               %(fromTagField)s AS fromtag, %(toTagField)s AS totag
-                       FROM   %(table)s
-                       WHERE  %(sessionIdField)s IN %%s AND
+                       FROM   %%(table)s
+                       WHERE  %(sessionIdField)s IN %%(ids)s AND
                               %(mediaInfoField)s LIKE 'timeout%%%%' AND
-                              %(stopInfoField)s IS NULL''' % CDRDatabaseConfig.__dict__ % ids
-            rows = sqlobject.queryAll(query)
+                              %(stopInfoField)s IS NULL''' % CDRDatabaseConfig.__dict__ % locals()
+            rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
                     call = calls[row[0]]
@@ -130,4 +138,5 @@ class CDRDatabase(object):
                 return call.fromtag==row[2] and call.totag==row[3]
             return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
         except Exception, e:
-            raise CDRException("Exception while querying for terminated calls %s." % e)
+            log.error('Query failed: %s' % query)
+            raise CDRDatabaseError("Exception while querying for timedout calls %s." % e)

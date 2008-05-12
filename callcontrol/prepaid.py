@@ -12,9 +12,10 @@ from application import log
 from application.python.util import Singleton
 
 from twisted.internet.protocol import ReconnectingClientFactory
+from twisted.internet.error import TimeoutError
+from twisted.internet import reactor, defer
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.protocols.policies import TimeoutMixin
-from twisted.internet import reactor, defer
 from twisted.python import failure
 
 from callcontrol import configuration_filename
@@ -27,7 +28,7 @@ class PrepaidEngineAddress(EndpointAddress):
     _name = 'rating engine address'
 
 class PrepaidConfig(ConfigSection):
-    _dataTypes = {'address': PrepaidEngineAddress}
+    _datatypes = {'address': PrepaidEngineAddress}
     address = ('127.0.0.1', 9024)
     connections = 1
 
@@ -38,6 +39,7 @@ config_file.read_settings('PrepaidEngine', PrepaidConfig)
 
 class PrepaidError(Exception): pass
 class PrepaidEngineError(PrepaidError): pass
+class PrepaidEngineTimeoutError(TimeoutError): pass
 
 class Request(str):
     def __init__(self, command, **kwargs):
@@ -57,18 +59,22 @@ class PrepaidEngineProtocol(LineOnlyReceiver, TimeoutMixin):
     
     def connectionMade(self):
         self.connected = True
+        self.factory.application.connectionMade(self.transport.connector)
 
-    def connectionLost(self):
+    def connectionLost(self, reason=None):
         self.connected = False
         if self.__request:
-            self._respond('Connection with the Prepaid Engine is down', success=False)
+            self._respond('Connection with the Prepaid Engine is down: %s' % reason, success=False)
+        log.info('Disconnected from Rating Engine')
 
     def timeoutConnection(self):
-        self.transport.loseConnection()
+        self.transport.loseConnection(PrepaidEngineTimeoutError())
+        log.info('Connection to Rating Engine timedout')
 
     def lineReceived(self, line):
+        log.info('Got reply from rating: %s' % line)
         if self.__request is None:
-            log.warn("Got %s reply for unexisting request: %s" % (success and 'successful' or 'failure', msg))
+            log.warn("Got reply for unexisting request: %s" % line)
             return
         def _unknown_handler(line):
             self._respond("Unknown command in request. Cannot handle reply. Reply is: %s" % line, success=False)
@@ -102,13 +108,14 @@ class PrepaidEngineProtocol(LineOnlyReceiver, TimeoutMixin):
         result = line.splitlines()[0].strip().capitalize()
         if result not in validAnswers:
             log.error("invalid reply from rating engine: `%s'" % result)
-            log.warning("rating engine possible failed query: %s" % cmd)
+            log.warn("rating engine possible failed query: %s" % cmd)
         elif result == 'Failed':
-            log.warning("rating engine failed query: %s" % cmd)
+            log.warn("rating engine failed query: %s" % cmd)
 
     def _send_next_request(self):
         self.__request = self.__request_queue.popleft()
         if self.connected:
+            log.info('Sent request to rating: %s' % self.__request)
             self.sendLine(self.__request)
             self.setTimeout(self.factory.timeout)
         else:
@@ -116,11 +123,12 @@ class PrepaidEngineProtocol(LineOnlyReceiver, TimeoutMixin):
 
     def _respond(self, result, success=True):
         self.setTimeout(None)
+        req = self.__request
         self.__request = None
         if success:
-            self.__request.deferred.callback(result)
+            req.deferred.callback(result)
         else:
-            self.__request.deferred.errback(failure.Failure(PrepaidEngineError(result)))
+            req.deferred.errback(failure.Failure(PrepaidEngineError(result)))
         if self.__request_queue:
             self._send_next_request()
 
@@ -134,7 +142,7 @@ class PrepaidEngineProtocol(LineOnlyReceiver, TimeoutMixin):
 class PrepaidEngineFactory(ReconnectingClientFactory):
     protocol = PrepaidEngineProtocol
 
-    timeout = 3
+    timeout = 30 #FIXME 3
 
     # reconnect parameters
     maxDelay = 15
@@ -142,24 +150,21 @@ class PrepaidEngineFactory(ReconnectingClientFactory):
     initialDelay = 1.0/factor
     delay = initialDelay
 
-    def __init__(self, engine):
-        self.engine = engine
-        self.proto = None
+    def __init__(self, application):
+        self.application = application
 
     def buildProtocol(self, addr):
         self.resetDelay()
-        self.proto = ReconnectingClientFactory.buildProtocol(self, addr)
-        return self.proto
+        return ReconnectingClientFactory.buildProtocol(self, addr)
 
     def clientConnectionFailed(self, connector, reason):
-        self.proto = None
-        if self.engine.disconnecting:
+        if self.application.disconnecting:
             return
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
     def clientConnectionLost(self, connector, reason):
-        self.proto = None
-        if self.engine.disconnecting:
+        self.application.connectionLost(connector, reason)
+        if self.application.disconnecting:
             return
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
@@ -167,30 +172,46 @@ class PrepaidEngineFactory(ReconnectingClientFactory):
 class PrepaidEngine(object):
     def __init__(self, address=None):
         self.address = address or PrepaidConfig.address
-        self.factory = PrepaidEngineFactory(self)
-        reactor.connectTCP(factory=self.factory, *self.address)
+        self.disconnecting = False
+        self.connector = reactor.connectTCP(self.address[0], self.address[1], factory=PrepaidEngineFactory(self))
+        self.connection = None
+
+    def shutdown(self):
+        self.disconnecting = True
+        self.connector.disconnect()
+
+    def connectionMade(self, connector):
+        self.connection = connector.transport
+        log.info('Connected to Rating Engine at %s:%d' % (self.address[0], self.address[1]))
+
+    def connectionLost(self, connector, reason):
+        self.connection = None
     
     def getCallLimit(self, call):
-        req = Request('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
-                      Gateway=call.sourceip, Duration=36000, Lock=1)
-        if self.factory.proto is not None:
-            return self.factory.proto.send_request(req).deferred
+        if self.connection is not None:
+            req = Request('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
+                          Gateway=call.sourceip, Duration=36000, Lock=1)
+            return self.connection.protocol.send_request(req).deferred
         return defer.succeed(0)
     
     def debitBalance(self, call):
-        req = Request('DebitBalance', CallId=call.callid, From=call.billingParty, To=call.ruri,
-                      Gateway=call.sourceip, Duration=call.duration)
-        if self.factory.proto is not None:
-            return self.factory.proto.send_request(req).deferred
+        if self.connection is not None:
+            req = Request('DebitBalance', CallId=call.callid, From=call.billingParty, To=call.ruri,
+                          Gateway=call.sourceip, Duration=call.duration)
+            return self.connection.protocol.send_request(req).deferred
         return defer.succeed(None)
 
 
-class PrepaidEngineConnection(object):
+class PrepaidEngineConnections(object):
     __metaclass__ = Singleton
 
     def __init__(self):
         self.connections = {'default': PrepaidEngine()}
     @staticmethod
     def getConnection(provider='default'):
-        conn = PrepaidEngineConnection()
+        conn = PrepaidEngineConnections()
         return conn.connections.get(provider, conn.connections['default'])
+
+    def shutdown(self):
+        for engine in self.connections.values():
+            engine.shutdown()
