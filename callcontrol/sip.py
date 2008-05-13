@@ -22,7 +22,7 @@ from twisted.internet.protocol import DatagramProtocol
 from twisted.internet.error import AlreadyCalled
 from twisted.internet import reactor, defer
 
-from callcontrol.prepaid import PrepaidEngineConnections
+from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename
 
 ##
@@ -43,7 +43,7 @@ config_file.read_settings('SIP', SipConfig)
 
 # check these. what should be enforced by the data type?
 if SipConfig.listen is None:
-    log.fatal("listening address for the SIP client is not defined")
+    log.fatal("Listening address for the SIP client is not defined")
 if SipConfig.proxy is None:
     log.fatal("SIP proxy address is not defined")
 
@@ -220,12 +220,15 @@ class Call(Structure):
         ## Determine who will pay for the call
         if self.diverter is not None:
             self.billingParty = 'sip:%s' % self.diverter
+            self.user = self.diverter
         else:
-            match = re.search(r'(?P<address>sip:[^@]+@[^\s:;>]+)', request['from'])
+            match = re.search(r'(?P<address>sip:(?P<user>[^@]+@[^\s:;>]+))', request['from'])
             if match is not None:
                 self.billingParty = match.groupdict()['address']
+                self.user = match.groupdict()['user']
             else:
                 self.billingParty = 'unknown'
+                self.user = 'unknown'
         ## Determine which provider will handle the call
         match = re.search(r'sip:[^@]+@(?P<hostname>.*)', self.billingParty)
         if match is not None:
@@ -254,8 +257,9 @@ class Call(Structure):
         #time.sleep(0.001)
         #sip.send(self.callerBye)
         #sip.send(self.calledBye)
+#        log.info("Call id %s of %s has been terminated by call control after %d seconds" % (self.callid, self.user, self.timelimit))
         self.application.clean_call(self.callid)
-        self.end() ## we can end here, or wait for SER to call us with a stop command after it receives the BYEs
+        self.end(reason='call control') ## we can end here, or wait for SER to call us with a stop command after it receives the BYEs
 
     def setup(self, request):
         """
@@ -266,16 +270,16 @@ class Call(Structure):
         parameters and redo the setup to update the timer and time limit.
         """
         deferred = defer.Deferred()
-        prepaid = PrepaidEngineConnections.getConnection(self.provider)
+        rating = RatingEngineConnections.getConnection(self.provider)
         if not self.__initialized: ## setup called for the first time
-            prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+            rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
         elif self.__initialized and self.starttime is None: ## call was previously setup but not yet started
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
-                ## unlock previous prepaid request
+                ## unlock previous rating request
                 if self.prepaid and not self.locked:
-                    prepaid.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[request, deferred], errbackArgs=[deferred])
+                    rating.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[request, deferred], errbackArgs=[deferred])
                     return deferred
         deferred.callback(None)
         return deferred
@@ -287,6 +291,7 @@ class Call(Structure):
         else:
             self.timelimit = limit
         if self.timelimit is None:
+            from callcontrol.controller import CallControlConfig
             self.timelimit = CallControlConfig.limit
             self.prepaid = False
         else:
@@ -304,7 +309,8 @@ class Call(Structure):
         if self.diverter is not None:
             self.billingParty = 'sip:%s' % self.diverter
         ## update time limit and timer
-        prepaid.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+        rating = RatingEngineConnections.getConnection(self.provider)
+        rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
 
     def _setup_timer(self, timeout=None):
         if timeout is None:
@@ -315,26 +321,28 @@ class Call(Structure):
         deferred.errback(fail)
 
     def start(self, request):
-        assert self.__initialized, "trying to start an unitialized call"
+        assert self.__initialized, "Trying to start an unitialized call"
         if self.starttime is None:
             self.called = Endpoint(request)
             self.totag  = request.totag
             self.starttime = time.time()
             if self.timer is not None:
+                log.info("Call id %s of %s started for maximum %d seconds" % (self.callid, self.user, self.timelimit))
                 self.timer.start()
 
     def update(self, request):
-        assert self.__initialized, "trying to update an unitialized call"
+        assert self.__initialized, "Trying to update an unitialized call"
         if self.fromtag == request.fromtag:
             self.caller.update(request)
         elif self.totag == request.fromtag:
             self.called.update(request)
         else:
-            log.warn("trying to update from nonexistent party (from tag mismatch)")
+            log.warn("Trying to update from nonexistent party (from tag mismatch)")
 
-    def end(self, calltime=None):
+    def end(self, calltime=None, reason=None):
         if self.timer:
             self.timer.cancel()
+        fullreason = '%s%s' % (self.inprogress and 'terminated' or 'canceled', reason and (' by %s' % reason) or '')
         if self.inprogress:
             self.endtime = time.time()
             duration = int(round(self.endtime - self.starttime))
@@ -343,18 +351,26 @@ class Call(Structure):
                 ## we were notified of this and we have the actual call duration in `calltime'
                 #self.endtime = self.starttime + calltime
                 self.duration = calltime
-                log.info("closing call that was already terminated (ended or did timeout)")
+                log.info("Call id %s of %s was already terminated (ended or did timeout) after %s seconds" % (self.callid, self.user, self.duration))
             elif self.expired:
                 self.duration = self.timelimit
                 if duration > self.timelimit + 10:
-                    log.warn("time difference between sending BYEs and actual closing is > 10 seconds")
+                    log.warn("Time difference between sending BYEs and actual closing is > 10 seconds")
             else:
                 self.duration = duration
         if self.prepaid and not self.locked:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
-            prepaid = PrepaidEngineConnections.getConnection(self.provider)
-            prepaid.debitBalance(self) # there is basically no result, so we ignore the deferred
+            rating = RatingEngineConnections.getConnection(self.provider)
+            rating.debitBalance(self).addCallbacks(callback=self._print_ended, callbackArgs=[reason and fullreason or None])
+        elif reason is not None:
+            log.info("Call id %s of %s %s after %d seconds" % (self.callid, self.user, fullreason, self.duration))
         self.timer = None
+
+    def _print_ended(self, value, reason):
+        if self.duration > 0:
+            log.info("Call id %s of %s %s after %d seconds, call price is %s" % (self.callid, self.user, reason, self.duration, value))
+        elif reason is not None:
+            log.info("Call id %s of %s %s" % (self.callid, self.user, reason))
 
     def getbye1(self):
         """Generate a BYE as if it came from the caller"""

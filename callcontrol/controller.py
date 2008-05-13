@@ -20,9 +20,9 @@ from twisted.internet import reactor, defer
 from twisted.python import failure
 
 from callcontrol.scheduler import RecurrentCall, KeepRunning
-from callcontrol.cdrdb import CDRDatabase, CDRDatabaseError
+from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
 from callcontrol.sip import Structure, Call, SipClient
-from callcontrol.prepaid import PrepaidEngineConnections
+from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename, backup_calls_file
 
 
@@ -41,8 +41,7 @@ class TimeLimit(int):
 
 class CallControlConfig(ConfigSection):
     _datatypes = {'limit': TimeLimit}
-#    socket        = "%s/socket" % process.runtime_directory
-    socket        = "/var/run/callcontrol.sock"
+    socket        = "%s/socket" % process.runtime_directory
     group         = 'openser'
     limit         = None
     timeout       = 24*60*60 ## timeout calls that are stale for more than 24 hours.
@@ -81,27 +80,23 @@ class CallsMonitor(object):
         self.reccall.cancel()
 
     def _clean_calls(self, calls, clean_function):
-        count = 0
         for callid, callinfo in calls.items():
             call = self.application.calls.get(callid)
             if call:
                 self.application.clean_call(callid)
                 clean_function(call, callinfo)
-                count += 1
-        if count > 0:
-            log.info("removed %d externally closed call%s" % (count, 's'*(count!=1)))
 
     def _err_handle(self, fail):
         log.error("Couldn't query database for terminated/timedout calls: %s" % fail.value)
 
     def _handle_terminated(self, call, callinfo):
-        call.end(calltime=callinfo['duration'])
+        call.end(calltime=callinfo['duration'], reason='calls monitor as terminated')
 
     def _handle_timedout(self, call, callinfo):
         sip = SipClient()
         sip.send(call.callerBye)
         sip.send(call.calledBye)
-        call.end()
+        call.end(reason='calls monitor as timedout')
 
     def _finish_checks(self, value):
         ## Also do the rest of the checking
@@ -111,34 +106,32 @@ class CallsMonitor(object):
         for callid, call in self.application.calls.items():
             if not call.complete and (now - call.created >= CallControlConfig.setupTime):
                 self.application.clean_call(callid)
+#                log.info("Call id %s of %s didn\'t setup in %d seconds" % (callid, call.user, CallControlConfig.setupTime))
                 nosetup.append(call)
             elif call.inprogress and call.timer is not None:
                 continue ## this call will be expired by its own timer
             elif now - call.created >= CallControlConfig.timeout:
                 self.application.clean_call(callid)
+#                log.info("Call id %s of %s was stale", (callid, call.user))
                 staled.append(call)
         ## Terminate staled
         for call in staled:
-            call.end()
-        count = len(staled)
-        if count > 0:
-            log.info("expired %d staled call%s" % (count, 's'*(count!=1)))
+            call.end(reason='calls monitor as staled')
         ## Terminate calls that didn't setup in setupTime
         for call in nosetup:
-            call.end()
-        count = len(nosetup)
-        if count > 0:
-            log.info("expired %d call%s that didn't setup in %d seconds" % (count, 's'*(count!=1), CallControlConfig.setupTime))
+            call.end(reason="calls monitor as it didn't setup in %d seconds" % CallControlConfig.setupTime)
 
 
 class CallControlProtocol(LineOnlyReceiver):
     def lineReceived(self, line):
+        if not line:
+            return
         try:
             req = Request(line)
         except InvalidRequestError, e:
             self._send_error_reply(failure.Failure(e))
         else:
-            log.info('Got request: %s' % str(req)) #FIXME
+#            log.debug("Got request: %s" % str(req)) #DEBUG
             def _unknown_handler(req):
                 req.deferred.errback(failure.Failure(CommandError(req)))
             try:
@@ -148,11 +141,8 @@ class CallControlProtocol(LineOnlyReceiver):
             else:
                 req.deferred.addCallbacks(callback=self._send_reply, errback=self._send_error_reply)
 
-    def connectionMade(self):
-        pass
-
     def _send_reply(self, msg):
-        log.info('Sent reply: %s' % msg) #FIXME
+#        log.debug('Sent reply: %s' % msg) #DEBUG
         self.sendLine(msg)
 
     def _send_error_reply(self, fail):
@@ -167,6 +157,7 @@ class CallControlProtocol(LineOnlyReceiver):
             if call.provider is None:
                 req.deferred.callback('No provider')
                 return
+#            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
             self.factory.application.calls[req.callid] = call
         deferred = call.setup(req)
         deferred.addCallbacks(callback=self._CC_finish_init, errback=self._send_error_reply, callbackArgs=[req])
@@ -175,15 +166,24 @@ class CallControlProtocol(LineOnlyReceiver):
         try:
             call = self.factory.application.calls[req.callid]
         except KeyError:
-            log.error("call disappeared before we could finish initializing it")
+            log.error("Call id %s disappeared before we could finish initializing it" % req.callid)
             req.deferred.callback('Error')
         else:
             if call.locked: ## prepaid account already locked by another call
+                log.info("Call id %s of %s forbidden because the account is locked" % (req.callid, call.user))
+                self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Locked')
             elif call.timelimit == 0: ## prepaid account with no credit
+                log.info("Call id %s of %s forbidden because credit is too low" % (req.callid, call.user))
+                self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No credit')
+            elif call.timelimit is None: ## no limit for call
+                log.info("Call id %s of %s is not limited" % (req.callid, call.user))
+                self.factory.application.clean_call(req.callid)
+                call.end()
+                req.deferred.callback('Ok')
             else:
                 req.deferred.callback('Ok')
 
@@ -212,7 +212,7 @@ class CallControlProtocol(LineOnlyReceiver):
             req.deferred.callback('Not found')
         else:
             self.factory.application.clean_call(req.callid)
-            call.end()
+            call.end(reason='user')
             req.deferred.callback('Ok')
 
     def _CC_debug(self, req):
@@ -239,7 +239,7 @@ class CallControlServer(object):
         self.sipclient = None
         self.engines = None
         self.monitor = None
-        self.db = CDRDatabase()
+        self.db = RadiusDatabase()
         
         self.calls = {}
         self._restore_calls()
@@ -247,6 +247,7 @@ class CallControlServer(object):
     def clean_call(self, callid):
         try:
             del self.calls[callid]
+#            log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
         except KeyError:
             pass
 
@@ -274,15 +275,15 @@ class CallControlServer(object):
         try:
             os.chown(self.path, -1, gid)
         except OSError:
-            log.warn("couldn't set access rights for %s." % self.path)
+            log.warn("Couldn't set access rights for %s" % self.path)
             log.warn("SER may not be able to communicate with us!")
 
         ## Then setup the CallsMonitor
         self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
         ## Initialize SipClient
         self.sipclient = SipClient()
-        ## Open the connection to the prepaid engines
-        self.engines = PrepaidEngineConnections()
+        ## Open the connection to the rating engines
+        self.engines = RatingEngineConnections()
 
     def on_shutdown(self):
         if self.listening is not None:
@@ -298,7 +299,7 @@ class CallControlServer(object):
     
     def _save_calls(self):
         if self.calls:
-            log.info('saving calls')
+            log.info('Saving calls')
             calls_file = '%s/%s' % (process.runtime_directory, backup_calls_file)
             try:
                 f = open(calls_file, 'w')
@@ -320,13 +321,15 @@ class CallControlServer(object):
                     try:
                         cPickle.dump(self.calls, f)
                     except Exception, why:
-                        log.warn("failed to dump call list: %s" % why)
+                        log.warn("Failed to dump call list: %s" % why)
                         failed_dump = True
                 finally:
                     f.close()
                 if failed_dump:
                     try:    os.unlink(calls_file)
                     except: pass
+                else:
+                    log.info("Saved calls: %s" % str(self.calls.keys()))
             self.calls = {}
 
     def _restore_calls(self):
@@ -339,18 +342,18 @@ class CallControlServer(object):
             try:
                 self.calls = cPickle.load(f)
             except Exception, why:
-                log.warn("failed to load calls saved in the previous session: %s" % why)
+                log.warn("Failed to load calls saved in the previous session: %s" % why)
             f.close()
             try:    os.unlink(calls_file)
             except: pass
             if self.calls:
-                log.info("restoring calls saved from previous session")
+                log.info("Restoring calls saved previously: %s" % str(self.calls.keys()))
                 ## the calls in the 2 sets below are never overlapping because closed and terminated
                 ## calls have different database fingerprints. so the dictionary update below is safe
                 try:
-                    terminated = self.db.query(CDRDatabase.CDRTask(None, 'terminated', calls=self.calls))   ## calls terminated by caller/called
-                    didtimeout = self.db.query(CDRDatabase.CDRTask(None, 'timedout', calls=self.calls))     ## calls closed by mediaproxy after a media timeout
-                except CDRDatabaseError, e:
+                    terminated = self.db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))   ## calls terminated by caller/called
+                    didtimeout = self.db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))     ## calls closed by mediaproxy after a media timeout
+                except RadiusDatabaseError, e:
                     log.error("Could not query database: %s" % e)
                 else:
                     for callid, call in self.calls.items():
@@ -377,7 +380,7 @@ class CallControlServer(object):
                             call.end()
                             count += 1
                     if count > 0:
-                        log.info("removed %d already terminated call%s" % (count, 's'*(count!=1)))
+                        log.info("Removed %d already terminated call%s" % (count, 's'*(count!=1)))
                 for callid, call in self.calls.items():
                     call.application = self
                     if call.timer == 'running':
@@ -424,9 +427,9 @@ class Request(Structure):
         self.deferred = defer.Deferred()
     def __str__(self):
         if self.cmd == 'init':
-            return "%(cmd)s: callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s" % self
+            return "%(cmd)s: callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s contact=%(contact)s fromtag=%(fromtag)s" % self
         elif self.cmd == 'start':
-            return "%(cmd)s: callid=%(callid)s" % self
+            return "%(cmd)s: callid=%(callid)s contact=%(contact)s totag=%(totag)s" % self
         elif self.cmd == 'update':
             return "%(cmd)s: callid=%(callid)s cseq=%(cseq)s fromtag=%(fromtag)s" % self
         elif self.cmd == 'stop':
