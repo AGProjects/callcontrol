@@ -214,7 +214,7 @@ class Call(Structure):
         self.sourceip  = request.sourceip
         self.fromtag   = request.fromtag  
         self.to        = request.to
-        self['from']   = request['from'] ## from is a python keyword
+        self['from']   = request.from_ ## from is a python keyword
         self.totag     = None
         self.sipclient = sipClientInfo
         ## Determine who will pay for the call
@@ -222,7 +222,7 @@ class Call(Structure):
             self.billingParty = 'sip:%s' % self.diverter
             self.user = self.diverter
         else:
-            match = re.search(r'(?P<address>sip:(?P<user>[^@]+@[^\s:;>]+))', request['from'])
+            match = re.search(r'(?P<address>sip:(?P<user>[^@]+@[^\s:;>]+))', request.from_)
             if match is not None:
                 self.billingParty = match.groupdict()['address']
                 self.user = match.groupdict()['user']

@@ -21,7 +21,7 @@ from twisted.python import failure
 
 from callcontrol.scheduler import RecurrentCall, KeepRunning
 from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
-from callcontrol.sip import Structure, Call, SipClient
+from callcontrol.sip import Call, SipClient
 from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename, backup_calls_file
 
@@ -394,7 +394,7 @@ class CallControlServer(object):
                     elif call.timer == 'idle':
                         call._setup_timer()
 
-class Request(Structure):
+class Request(object):
     """A request parsed into a structure based on request type"""
     __methods = {'init':   ('callid', 'contact', 'cseq', 'diverter', 'ruri', 'sourceip', 'from', 'fromtag', 'to'),
                  'start':  ('callid', 'contact', 'totag'),
@@ -402,7 +402,6 @@ class Request(Structure):
                  'stop':   ('callid',),
                  'debug':  ()}
     def __init__(self, message):
-        Structure.__init__(self)
         try:    message + ''
         except: raise ValueError, "message should be a string"
         lines = [line.strip() for line in message.splitlines() if line.strip()]
@@ -421,21 +420,29 @@ class Request(Structure):
             except KeyError:
                 raise InvalidRequestError, "missing %s from request" % p
         self.cmd = cmd
-        self.update(parameters)
-        if cmd=='init' and self.diverter.lower()=='none':
-            self.diverter = None
         self.deferred = defer.Deferred()
+        self.__dict__.update(parameters)
+        try:
+            getattr(self, '_RE_%s' % self.cmd)()
+        except AttributeError:
+            pass
+
+    def _RE_init(self):
+        self.from_ = self.__dict__['from']
+        if self.cmd=='init' and self.diverter.lower()=='none':
+            self.diverter = None
+
     def __str__(self):
         if self.cmd == 'init':
-            return "%(cmd)s: callid=%(callid)s from=%(from)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s contact=%(contact)s fromtag=%(fromtag)s" % self
+            return "%(cmd)s: callid=%(callid)s from=%(from_)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s contact=%(contact)s fromtag=%(fromtag)s" % self.__dict__
         elif self.cmd == 'start':
-            return "%(cmd)s: callid=%(callid)s contact=%(contact)s totag=%(totag)s" % self
+            return "%(cmd)s: callid=%(callid)s contact=%(contact)s totag=%(totag)s" % self.__dict__
         elif self.cmd == 'update':
-            return "%(cmd)s: callid=%(callid)s cseq=%(cseq)s fromtag=%(fromtag)s" % self
+            return "%(cmd)s: callid=%(callid)s cseq=%(cseq)s fromtag=%(fromtag)s" % self.__dict__
         elif self.cmd == 'stop':
-            return "%(cmd)s: callid=%(callid)s" % self
+            return "%(cmd)s: callid=%(callid)s" % self.__dict__
         elif self.cmd == 'debug':
-            return "%(cmd)s" % self
+            return "%(cmd)s" % self.__dict__
         else:
-            return Structure.__str__(self)
+            return object.__str__(self)
 

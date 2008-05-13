@@ -101,9 +101,9 @@ class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
             else:
                 if limit < 0:
                     raise ValueError, "limit must be a positive number, None or Locked"
-        except:
+        except Exception, e:
             log.error("Invalid reply from Rating Engine: `%s'" % res)
-            limit = 0
+            raise e
         return limit
 
     def _PE_debitbalance(self, line):
