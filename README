@@ -1,17 +1,13 @@
 
-                            Call Control
-
-                        Copyright Dan Pascu
-                          2005 AG Projects
-
-
+Description
+-----------
 
 Call Control is an application that can be used together with OpenSER to
 limit the duration of SIP sessions. The applications that can be build upon
 this functionality include prepaid systems using an external rating engine
-(like CDRTool rating engine), for limiting the maximum call duration to a
-certain value or being able to close calls in progress based on various
-rules.
+(by default CDRTool rating engine is used), for limiting the maximum call
+duration to a certain value or being able to close calls in progress based
+on various rules.
 
 Call Control can close a call in progress, by sending BYE messages to both
 parties, if the call does exceed its specified time limit or if Call Control
@@ -21,6 +17,7 @@ by either party involved in the conversation, before the call maximum
 allowed time is exceeded.
 
 For installation information please consult the INSTALL file.
+
 For licensing information please read the LICENSE file.
 
 
@@ -92,5 +89,4 @@ Note: the value is returned without the quotes shown above.
 
 There are cases where we call DebitBalance with a 0 duration. This is valid
 and should unlock the account but leave the credit untouched.
-
 

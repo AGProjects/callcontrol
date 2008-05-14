@@ -4,7 +4,7 @@
 # Copyright (C) 2005-2008 AG Projects.
 #
 
-"""Implementation of a call controller for SER."""
+"""Implementation of a call controller for OpenSER."""
 
 if __name__ == '__main__':
     import sys
