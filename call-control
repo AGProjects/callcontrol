@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: ascii -*-
 
-# Copyright (C) 2005-2008 AG Projects.
+# Copyright (C) 2005-2008 AG Projects. See LICENSE for details.
 #
 
 """Implementation of a call controller for OpenSER."""
@@ -17,7 +17,8 @@ if __name__ == '__main__':
     fullname = 'SIP call-control'
     description = 'Implementation of call-control for SIP'
 
-    config_directory = '/etc/callcontrol'
+#    config_directory = '/etc/callcontrol'
+    config_directory = '/home/luci/work/callcontrol'
     runtime_directory = '/var/run/callcontrol'
     default_pid = "%s/%s.pid" % (runtime_directory, name)
 

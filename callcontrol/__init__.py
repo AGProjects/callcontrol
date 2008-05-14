@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2008 AG-Projects.
+# Copyright (C) 2005-2008 AG-Projects. See LICENSE for details.
 #
 
 """SIP Callcontrol"""

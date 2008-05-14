@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2008 AG Projects.
+# Copyright (C) 2005-2008 AG Projects. See LICENSE for details.
 #
 
 """Implementation of a call control server for SER."""
@@ -124,14 +124,20 @@ class CallsMonitor(object):
 
 class CallControlProtocol(LineOnlyReceiver):
     def lineReceived(self, line):
-        if not line:
-            return
+        if line.strip() == "":
+            if self.line_buf:
+                self._process()
+                self.line_buf = []
+        else:
+            self.line_buf.append(line.strip())
+
+    def _process(self):
         try:
-            req = Request(line)
+            req = Request(self.line_buf[0], self.line_buf[1:])
         except InvalidRequestError, e:
             self._send_error_reply(failure.Failure(e))
         else:
-#            log.debug("Got request: %s" % str(req)) #DEBUG
+            log.debug("Got request: %s" % str(req)) #DEBUG
             def _unknown_handler(req):
                 req.deferred.errback(failure.Failure(CommandError(req)))
             try:
@@ -141,13 +147,16 @@ class CallControlProtocol(LineOnlyReceiver):
             else:
                 req.deferred.addCallbacks(callback=self._send_reply, errback=self._send_error_reply)
 
+    def connectionMade(self):
+        self.line_buf = []
+
     def _send_reply(self, msg):
-#        log.debug('Sent reply: %s' % msg) #DEBUG
+        log.debug('Sent reply: %s' % msg) #DEBUG
         self.sendLine(msg)
 
     def _send_error_reply(self, fail):
         log.error(fail.value)
-#        log.debug("Sent 'Error' reply") #DEBUG
+        log.debug("Sent 'Error' reply") #DEBUG
         self.sendLine('Error')
 
     def _CC_init(self, req):
@@ -184,9 +193,9 @@ class CallControlProtocol(LineOnlyReceiver):
                 log.info("Call id %s of %s is not limited" % (req.callid, call.user))
                 self.factory.application.clean_call(req.callid)
                 call.end()
-                req.deferred.callback('Ok')
+                req.deferred.callback('No limit') # No limit
             else:
-                req.deferred.callback('Ok')
+                req.deferred.callback('Limited') # Limited
 
     def _CC_init_failed(self, fail, req):
         self._send_error_reply(fail)
@@ -222,6 +231,7 @@ class CallControlProtocol(LineOnlyReceiver):
 
     def _CC_debug(self, req):
         log.debug(str(self.factory.application.calls))
+        req.deferred.callback('Ok')
 
 
 class CallControlFactory(Factory):
@@ -406,17 +416,12 @@ class Request(object):
                  'update': ('callid', 'cseq', 'fromtag'),
                  'stop':   ('callid',),
                  'debug':  ()}
-    def __init__(self, message):
-        try:    message + ''
-        except: raise ValueError, "message should be a string"
-        lines = [line.strip() for line in message.splitlines() if line.strip()]
-        if not lines:
-            raise InvalidRequestError, 'missing input'
-        cmd = lines[0].lower()
+    def __init__(self, cmd, params):
         if cmd not in self.__methods.keys():
             raise InvalidRequestError, "unknown request: %s" % cmd
         try:
-            parameters = dict([re.split(r':\s+', l, 1) for l in lines[1:]])
+#            parameters = dict([param for param in [re.split(r':\s+', l, 1) for l in params] if param[1]])
+            parameters = dict([re.split(r':\s+', l, 1) for l in params])
         except ValueError:
             raise InvalidRequestError, "badly formatted request"
         for p in self.__methods[cmd]:
