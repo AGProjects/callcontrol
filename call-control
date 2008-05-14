@@ -17,7 +17,7 @@ if __name__ == '__main__':
     fullname = 'SIP call-control'
     description = 'Implementation of call-control for SIP'
 
-    config_directory = '/home/luci/work/callcontrol'
+    config_directory = '/etc/callcontrol'
     runtime_directory = '/var/run/callcontrol'
     default_pid = "%s/%s.pid" % (runtime_directory, name)
 

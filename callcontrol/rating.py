@@ -30,11 +30,11 @@ class RatingEngineAddress(EndpointAddress):
 class RatingConfig(ConfigSection):
     _datatypes = {'address': RatingEngineAddress}
     address = ('127.0.0.1', 9024)
-    connections = 1
+    timeout = 500
 
 ## We use this to overwrite some of the settings above on a local basis if needed
 config_file = ConfigFile(configuration_filename)
-config_file.read_settings('RatingEngine', RatingConfig)
+config_file.read_settings('CDRTool', RatingConfig)
 
 
 class RatingError(Exception): pass
@@ -51,12 +51,13 @@ class RatingRequest(str):
         obj = str.__new__(cls, reqstr)
         return obj
 
-class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
+class RatingEngineProtocol(LineOnlyReceiver):
     delimiter = '\n\n'
     def __init__(self):
         self.connected = False
         self.__request = None
         self.__request_queue = deque()
+        self.__timeout_call = None
     
     def connectionMade(self):
         self.connected = True
@@ -76,6 +77,8 @@ class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
 #        log.debug("Got reply from rating engine: %s" % line) #DEBUG
         if not line:
             return
+        if self.__timeout_call is not None:
+            self.__timeout_call.cancel()
         if self.__request is None:
             log.warn("Got reply for unexisting request: %s" % line)
             return
@@ -102,7 +105,6 @@ class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
                 if limit < 0:
                     raise ValueError, "limit must be a positive number, None or Locked"
         except Exception, e:
-            log.error("Invalid reply from Rating Engine: `%s'" % res)
             raise e
         return limit
 
@@ -123,13 +125,12 @@ class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
         self.__request = self.__request_queue.popleft()
         if self.connected:
             self.sendLine(self.__request)
-            self.setTimeout(self.factory.timeout)
+            self._set_timeout()
 #            log.debug("Sent request to rating engine: %s" % self.__request) #DEBUG
         else:
             self._respond('Connection with the Rating Engine is down', success=False)
 
     def _respond(self, result, success=True):
-        self.setTimeout(None)
         req = self.__request
         self.__request = None
         if success:
@@ -138,6 +139,11 @@ class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
             req.deferred.errback(failure.Failure(RatingEngineError(result)))
         if self.__request_queue:
             self._send_next_request()
+
+    def _set_timeout(self, timeout=None):
+        if timeout is None:
+            timeout = self.factory.timeout
+        self.__timeout_call = reactor.callLater(timeout/1000.0, self.timeoutConnection)
 
     def send_request(self, request):
         self.__request_queue.append(request)
@@ -149,7 +155,7 @@ class RatingEngineProtocol(LineOnlyReceiver, TimeoutMixin):
 class RatingEngineFactory(ReconnectingClientFactory):
     protocol = RatingEngineProtocol
 
-    timeout = 1
+    timeout = RatingConfig.timeout
 
     # reconnect parameters
     maxDelay = 15
@@ -199,14 +205,14 @@ class RatingEngine(object):
             req = RatingRequest('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
                           Gateway=call.sourceip, Duration=36000, Lock=1)
             return self.connection.protocol.send_request(req).deferred
-        return defer.succeed(0)
+        return defer.fail(failure.Failure(RatingEngineError('Connection with Rating Engine is down')))
     
     def debitBalance(self, call):
         if self.connection is not None:
             req = RatingRequest('DebitBalance', CallId=call.callid, From=call.billingParty, To=call.ruri,
                           Gateway=call.sourceip, Duration=call.duration)
             return self.connection.protocol.send_request(req).deferred
-        return defer.succeed(None)
+        return defer.fail(failure.Failure(RatingEngineError('Connection with Rating Engine is down')))
 
 
 class RatingEngineConnections(object):

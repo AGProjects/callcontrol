@@ -147,6 +147,7 @@ class CallControlProtocol(LineOnlyReceiver):
 
     def _send_error_reply(self, fail):
         log.error(fail.value)
+#        log.debug("Sent 'Error' reply") #DEBUG
         self.sendLine('Error')
 
     def _CC_init(self, req):
@@ -160,7 +161,7 @@ class CallControlProtocol(LineOnlyReceiver):
 #            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
             self.factory.application.calls[req.callid] = call
         deferred = call.setup(req)
-        deferred.addCallbacks(callback=self._CC_finish_init, errback=self._send_error_reply, callbackArgs=[req])
+        deferred.addCallbacks(callback=self._CC_finish_init, errback=self._CC_init_failed, callbackArgs=[req], errbackArgs=[req])
 
     def _CC_finish_init(self, value, req):
         try:
@@ -186,6 +187,10 @@ class CallControlProtocol(LineOnlyReceiver):
                 req.deferred.callback('Ok')
             else:
                 req.deferred.callback('Ok')
+
+    def _CC_init_failed(self, fail, req):
+        self._send_error_reply(fail)
+        self.factory.application.clean_call(req.callid)
 
     def _CC_start(self, req):
         try:

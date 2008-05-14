@@ -363,7 +363,7 @@ class Call(Structure):
             rating = RatingEngineConnections.getConnection(self.provider)
             rating.debitBalance(self).addCallbacks(callback=self._print_ended, callbackArgs=[reason and fullreason or None])
         elif reason is not None:
-            log.info("Call id %s of %s %s after %d seconds" % (self.callid, self.user, fullreason, self.duration))
+            log.info("Call id %s of %s %s%s" % (self.callid, self.user, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
         self.timer = None
 
     def _print_ended(self, value, reason):

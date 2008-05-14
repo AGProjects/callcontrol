@@ -61,7 +61,7 @@
 ;listen = default
 ;proxy  = None
 
-[PrepaidEngine]
+[CDRTool]
 ;
 ; Configure where the rating engine is located and how many connections
 ; to keep open with the rating engine.
@@ -75,15 +75,15 @@
 ;
 ;                Default value: 127.0.0.1
 ;
-; connections    Keep this many simultaneous connection open with the rating
-;                engine at any time.
+; timeout        Timeout after this many milliseconds while waiting for
+;                response from rating engine.
 ;
 ;                Default value: 1
 ;
 ;address = 127.0.0.1
-;connections = 1
+;timeout = 500
 
-[CDRDatabase]
+[RadiusDatabase]
 ;
 ; Used to keep track of calls that timeout and are closed by external means
 ; (like mediaproxy) without sending BYEs that will close the call in the
