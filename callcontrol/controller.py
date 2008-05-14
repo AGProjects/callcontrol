@@ -106,13 +106,11 @@ class CallsMonitor(object):
         for callid, call in self.application.calls.items():
             if not call.complete and (now - call.created >= CallControlConfig.setupTime):
                 self.application.clean_call(callid)
-#                log.info("Call id %s of %s didn\'t setup in %d seconds" % (callid, call.user, CallControlConfig.setupTime))
                 nosetup.append(call)
             elif call.inprogress and call.timer is not None:
                 continue ## this call will be expired by its own timer
             elif now - call.created >= CallControlConfig.timeout:
                 self.application.clean_call(callid)
-#                log.info("Call id %s of %s was stale", (callid, call.user))
                 staled.append(call)
         ## Terminate staled
         for call in staled:
@@ -137,7 +135,7 @@ class CallControlProtocol(LineOnlyReceiver):
         except InvalidRequestError, e:
             self._send_error_reply(failure.Failure(e))
         else:
-            log.debug("Got request: %s" % str(req)) #DEBUG
+#            log.debug("Got request: %s" % str(req)) #DEBUG
             def _unknown_handler(req):
                 req.deferred.errback(failure.Failure(CommandError(req)))
             try:
@@ -151,12 +149,12 @@ class CallControlProtocol(LineOnlyReceiver):
         self.line_buf = []
 
     def _send_reply(self, msg):
-        log.debug('Sent reply: %s' % msg) #DEBUG
+#        log.debug('Sent reply: %s' % msg) #DEBUG
         self.sendLine(msg)
 
     def _send_error_reply(self, fail):
         log.error(fail.value)
-        log.debug("Sent 'Error' reply") #DEBUG
+#        log.debug("Sent 'Error' reply") #DEBUG
         self.sendLine('Error')
 
     def _CC_init(self, req):
