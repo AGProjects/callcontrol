@@ -88,6 +88,10 @@ class SipClient(object):
         self.proxy = proxy or SipConfig.proxy
         self.protocol = SipNullClientProtocol()
         self.__shutdown = False
+        if not self.proxy:
+            raise SipClientError('SIP Proxy address is not defined')
+        if not self.listen:
+            raise SipClientError('SIP Client listening address is not defined')
         self.listening = reactor.listenUDP(self.listen[1], self.protocol)
 
     def send(self, data):
