@@ -1,0 +1,6 @@
+recursive-include debian  changelog compat control copyright dirs docs pycompat rules
+recursive-include debian  *.manpages *.init
+recursive-include doc/man *.[1-9]
+prune debian/tmp
+prune debian/callcontrol
+include MANIFEST.in config.ini.sample
