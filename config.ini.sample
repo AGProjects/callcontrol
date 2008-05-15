@@ -1,5 +1,5 @@
 ;
-; Configuration file for Call Controller
+; Configuration file for Call Control
 ;
 
 [CallControl]
@@ -9,7 +9,7 @@
 ; The following options are available here:
 ;
 ; socket   Path to the UNIX socket where the controller receives
-;          commands from SER. This should match the value for
+;          commands from OpenSER. This should match the value for
 ;          call_control_socket in openser.cfg
 ;          Default value: /var/run/callcontrol/socket
 ;
@@ -63,8 +63,7 @@
 
 [CDRTool]
 ;
-; Configure where the rating engine is located and how many connections
-; to keep open with the rating engine.
+; Configure where CDRTool rating engine is located
 ;
 ; address        Network address where the rating engine is located.
 ;
