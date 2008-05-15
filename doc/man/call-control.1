@@ -1,0 +1,58 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH "SIP Call Control" "1" "May 15, 2008"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+call\-control \- the SIP call control application
+.SH SYNOPSIS
+.B call-control
+.RI [ options ]
+.SH DESCRIPTION
+.PP
+.\" TeX users may be more comfortable with the \fB<whatever>\fP and
+.\" \fI<whatever>\fP escape sequences to invode bold face and italics, 
+.\" respectively.
+Call Control is an application that can be used together with OpenSER to
+limit the duration of SIP sessions. The applications that can be built
+upon this functionality include prepaid systems using an external rating
+engine (like CDRTool rating engine), for limiting the maximum call
+duration to a certain value or being able to close calls in progress
+based on various rules.
+.PP
+Call Control can close a call in progress, by sending BYE messages to both
+parties, if the call does exceed its specified time limit or if Call Control
+receives a command to forcefully close the call from outside. It will
+however not send these fake BYE messages if the call is normally terminated
+by either party involved in the conversation, before the call maximum
+allowed time is exceeded.
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+Show summary of options.
+.TP
+.B \-\-version
+Show version of program.
+.TP
+.B \-\-no\-fork
+Run the process in the foreground (for debugging).
+.TP
+.B \-\-pid=file
+Set the proces pid file to \fB`file'\fP. If not specified the default
+pid file is \fB/var/run/callcontrol/call\-control.pid\fP .
+.SH AUTHORS
+Dan Pascu <dan@ag-projects.com>
+.br
+Lucian Stanescu <luci@ag-projects.com>.

@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+if which update-python-modules >/dev/null 2>&1; then
+	update-python-modules callcontrol
+fi
+if [ -x "/etc/init.d/callcontrol" ]; then
+	update-rc.d callcontrol defaults >/dev/null
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+		invoke-rc.d callcontrol start || exit $?
+	else
+		/etc/init.d/callcontrol start || exit $?
+	fi
+fi
