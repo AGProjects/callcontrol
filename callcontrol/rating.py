@@ -107,10 +107,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 elif limit == 'Locked':
                     pass
                 else:
-                    raise ValueError, "limit must be a positive number, None or Locked"
+                    raise ValueError("limit must be a positive number, None or Locked")
             else:
                 if limit < 0:
-                    raise ValueError, "limit must be a positive number, None or Locked"
+                    raise ValueError("limit must be a positive number, None or Locked")
         except Exception, e:
             raise e
         return limit

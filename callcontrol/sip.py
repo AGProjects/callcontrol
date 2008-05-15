@@ -142,7 +142,7 @@ class Structure(dict):
         obj = self ## start with ourselves
         for e in elements:
             if not isinstance(obj, dict):
-                raise TypeError, "unsubscriptable object"
+                raise TypeError("unsubscriptable object")
             obj = dict.__getitem__(obj, e)
         return obj
     def __setitem__(self, key, value):
@@ -156,7 +156,7 @@ class Structure(dict):
         try:
             del self.__dict__[name]
         except KeyError:
-            raise AttributeError, "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
+            raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, name))
         else:
             dict.__delitem__(self, name)
     def update(self, other):

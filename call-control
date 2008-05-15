@@ -6,12 +6,34 @@
 
 """Implementation of a call controller for OpenSER."""
 
+def debug(method, **kwargs):
+    import socket
+    import select
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect('%s/socket' % process.runtime_directory)
+
+    sock.sendall('debug\r\nshow: %s\r\n' % method + '\r\n'.join(['%s: %s' % (key, value) for key, value in kwargs.items()]) + '\r\n\r\n')
+    response = ''
+    while True:
+        select.select([sock], [], [])[0]
+        data = sock.recv(4096)
+        response += data
+        if not data or data.endswith('\r\n'):
+            break
+    sock.close()
+    for line in response.splitlines():
+        if line:
+            print line
+
+
 if __name__ == '__main__':
     import sys
     from optparse import OptionParser
     from application.process import process, ProcessError
     from application import log
     import callcontrol
+
    
     name = 'call-control'
     fullname = 'SIP call-control'
@@ -22,21 +44,33 @@ if __name__ == '__main__':
     default_pid = "%s/%s.pid" % (runtime_directory, name)
 
     parser = OptionParser(version="%%prog %s" % callcontrol.__version__)
-    parser.add_option("--no-fork", action="store_false", dest="fork", default=1,
+    parser.add_option("--no-fork", action="store_false", dest="fork", default=True,
                       help="run the process in the foreground")
     parser.add_option("--pid", dest="pid_file", default='/var/run/callcontrol/call-control.pid',
                       help="pid file (/var/run/callcontrol/call-control.pid)", 
                       metavar="FILE")
+    parser.add_option("--debug", dest="debug", default=None,
+                      help="get information about a currently running call-control daemon",
+                      metavar="COMMAND")
     (options, args) = parser.parse_args()
 
     pid_file = options.pid_file
-   
+
     process._system_config_directory = config_directory
     try:
         process.runtime_directory = runtime_directory
     except ProcessError, e:
         log.fatal(str(e))
         sys.exit(1)
+
+    if options.debug:
+        try:
+            debug(options.debug, **dict([arg.split('=',1) for arg in args if arg.find('=') >= 0]))
+        except Exception, e:
+            print >>sys.stderr, 'Error while debugging: %s' % e
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
     if options.fork:
         try:

@@ -228,8 +228,20 @@ class CallControlProtocol(LineOnlyReceiver):
             req.deferred.callback('Ok')
 
     def _CC_debug(self, req):
-        log.debug(str(self.factory.application.calls))
-        req.deferred.callback('Ok')
+        debugstr = ''
+        if req.show == 'sessions':
+            for callid, call in self.factory.application.calls.items():
+                if not req.user or call.user.startswith(req.user):
+                    debugstr += 'Call id %s of %s: %s\n' % (callid, call.user, call.status)
+        elif req.show == 'session':
+            try:
+                call = self.factory.application.calls[req.callid]
+            except KeyError:
+                debugstr += 'Call id %s does not exist\n' % req.callid
+            else:
+                for key, value in call.items():
+                    debugstr += '%s: %s\n' % (key, value)
+        req.deferred.callback(debugstr)
 
 
 class CallControlFactory(Factory):
@@ -413,20 +425,19 @@ class Request(object):
                  'start':  ('callid', 'contact', 'totag'),
                  'update': ('callid', 'cseq', 'fromtag'),
                  'stop':   ('callid',),
-                 'debug':  ()}
+                 'debug':  ('show',)}
     def __init__(self, cmd, params):
         if cmd not in self.__methods.keys():
-            raise InvalidRequestError, "unknown request: %s" % cmd
+            raise InvalidRequestError("Unknown request: %s" % cmd)
         try:
-#            parameters = dict([param for param in [re.split(r':\s+', l, 1) for l in params] if param[1]])
             parameters = dict([re.split(r':\s+', l, 1) for l in params])
         except ValueError:
-            raise InvalidRequestError, "badly formatted request"
+            raise InvalidRequestError("Badly formatted request")
         for p in self.__methods[cmd]:
             try: 
                 parameters[p]
             except KeyError:
-                raise InvalidRequestError, "missing %s from request" % p
+                raise InvalidRequestError("Missing %s from request" % p)
         self.cmd = cmd
         self.deferred = defer.Deferred()
         self.__dict__.update(parameters)
@@ -440,6 +451,21 @@ class Request(object):
         if self.cmd=='init' and self.diverter.lower()=='none':
             self.diverter = None
 
+    def _RE_debug(self):
+        if self.show == 'session':
+            try:
+                if not self.callid:
+                    raise AttributeError()
+            except AttributeError:
+                raise InvalidRequestError("Missing callid from request")
+        elif self.show == 'sessions':
+            try:
+                self.user
+            except AttributeError:
+                self.user = None
+        else:
+            raise InvalidRequestError("Illegal value for 'show' attribute in request")
+
     def __str__(self):
         if self.cmd == 'init':
             return "%(cmd)s: callid=%(callid)s from=%(from_)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s contact=%(contact)s fromtag=%(fromtag)s" % self.__dict__
@@ -450,7 +476,7 @@ class Request(object):
         elif self.cmd == 'stop':
             return "%(cmd)s: callid=%(callid)s" % self.__dict__
         elif self.cmd == 'debug':
-            return "%(cmd)s" % self.__dict__
+            return "%(cmd)s: show=%(show)s" % self.__dict__
         else:
             return object.__str__(self)
 

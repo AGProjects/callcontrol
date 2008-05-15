@@ -23,7 +23,7 @@ test -f $DAEMON || exit 0
 set -e
 
 case "$1" in
-  start|debug)
+  start)
 	echo -n "Starting $DESC: $NAME"
 	start-stop-daemon --start --quiet --pidfile $PIDFILE \
 		--exec $DAEMON -- $OPTIONS || echo -n " already running"
@@ -41,9 +41,15 @@ case "$1" in
 		--exec $DAEMON -- $OPTIONS
 	echo "."
 	;;
+  sessions)
+    $DAEMON "--debug=sessions"
+    ;;
+  session)
+    $DAEMON "--debug=session" "callid=$2"
+    ;;
   *)
 	N=/etc/init.d/$NAME
-	echo "Usage: $N {start|stop|restart|force-reload}" >&2
+	echo "Usage: $N {start|stop|restart|force-reload|sessions|session}" >&2
 	exit 1
 	;;
 esac
