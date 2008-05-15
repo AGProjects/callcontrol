@@ -27,9 +27,15 @@ class RatingEngineAddress(EndpointAddress):
     _defaultPort = 9024
     _name = 'rating engine address'
 
+class RatingEngineAddresses(list):
+    def __new__(cls, engines):
+        engines = engines.split()
+        engines = [RatingEngineAddress(engine) for engine in engines]
+        return engines
+
 class RatingConfig(ConfigSection):
-    _datatypes = {'address': RatingEngineAddress}
-    address = ('127.0.0.1', 9024)
+    _datatypes = {'address': RatingEngineAddresses}
+    address = [('127.0.0.1', 9024)]
     timeout = 500
 
 ## We use this to overwrite some of the settings above on a local basis if needed
@@ -60,18 +66,19 @@ class RatingEngineProtocol(LineOnlyReceiver):
         self.__timeout_call = None
     
     def connectionMade(self):
+        log.info("Connected to Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = True
         self.factory.application.connectionMade(self.transport.connector)
 
     def connectionLost(self, reason=None):
+        log.info("Disconnected from Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = False
         if self.__request:
             self._respond("Connection with the Rating Engine is down: %s" % reason, success=False)
-        log.info("Disconnected from Rating Engine")
 
     def timeoutConnection(self):
+        log.info("Connection to Rating Engine at %s:%d timedout" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.transport.loseConnection(RatingEngineTimeoutError())
-        log.info("Connection to Rating Engine timedout")
 
     def lineReceived(self, line):
 #        log.debug("Got reply from rating engine: %s" % line) #DEBUG
@@ -183,8 +190,8 @@ class RatingEngineFactory(ReconnectingClientFactory):
 
 
 class RatingEngine(object):
-    def __init__(self, address=None):
-        self.address = address or RatingConfig.address
+    def __init__(self, address):
+        self.address = address
         self.disconnecting = False
         self.connector = reactor.connectTCP(self.address[0], self.address[1], factory=RatingEngineFactory(self))
         self.connection = None
@@ -195,7 +202,6 @@ class RatingEngine(object):
 
     def connectionMade(self, connector):
         self.connection = connector.transport
-        log.info("Connected to Rating Engine at %s:%d" % (self.address[0], self.address[1]))
 
     def connectionLost(self, connector, reason):
         self.connection = None
@@ -219,12 +225,12 @@ class RatingEngineConnections(object):
     __metaclass__ = Singleton
 
     def __init__(self):
-        self.connections = {'default': RatingEngine()}
+        self.connections = [RatingEngine(engine) for engine in RatingConfig.address]
     @staticmethod
-    def getConnection(provider='default'):
+    def getConnection():
         conn = RatingEngineConnections()
-        return conn.connections.get(provider, conn.connections['default'])
+        return random.choice(conn.connections)
 
     def shutdown(self):
-        for engine in self.connections.values():
+        for engine in self.connections:
             engine.shutdown()

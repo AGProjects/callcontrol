@@ -270,7 +270,7 @@ class Call(Structure):
         parameters and redo the setup to update the timer and time limit.
         """
         deferred = defer.Deferred()
-        rating = RatingEngineConnections.getConnection(self.provider)
+        rating = RatingEngineConnections.getConnection()
         if not self.__initialized: ## setup called for the first time
             rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
@@ -309,7 +309,7 @@ class Call(Structure):
         if self.diverter is not None:
             self.billingParty = 'sip:%s' % self.diverter
         ## update time limit and timer
-        rating = RatingEngineConnections.getConnection(self.provider)
+        rating = RatingEngineConnections.getConnection()
         rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
 
     def _setup_timer(self, timeout=None):
@@ -360,7 +360,7 @@ class Call(Structure):
                 self.duration = duration
         if self.prepaid and not self.locked:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
-            rating = RatingEngineConnections.getConnection(self.provider)
+            rating = RatingEngineConnections.getConnection()
             rating.debitBalance(self).addCallbacks(callback=self._print_ended, callbackArgs=[reason and fullreason or None])
         elif reason is not None:
             log.info("Call id %s of %s %s%s" % (self.callid, self.user, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
