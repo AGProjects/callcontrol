@@ -25,6 +25,9 @@ from twisted.internet import reactor, defer
 from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename
 
+
+class SipError(Exception): pass
+
 ##
 ## SIP configuration
 ##
@@ -44,8 +47,10 @@ config_file.read_settings('SIP', SipConfig)
 # check these. what should be enforced by the data type?
 if SipConfig.listen is None:
     log.fatal("Listening address for the SIP client is not defined")
+    raise SipError('SIP Client listening address is not defined')
 if SipConfig.proxy is None:
     log.fatal("SIP proxy address is not defined")
+    raise SipError('SIP Proxy address is not defined')
 
 ## Determine what is the address we will send from, based on configuration
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -66,7 +71,6 @@ del s
 ## SIP client implementation
 ##
 
-class SipError(Exception): pass
 class SipClientError(SipError): pass
 class SipTransmisionError(SipError): pass
 
@@ -88,10 +92,6 @@ class SipClient(object):
         self.proxy = proxy or SipConfig.proxy
         self.protocol = SipNullClientProtocol()
         self.__shutdown = False
-        if not self.proxy:
-            raise SipClientError('SIP Proxy address is not defined')
-        if not self.listen:
-            raise SipClientError('SIP Client listening address is not defined')
         self.listening = reactor.listenUDP(self.listen[1], self.protocol)
 
     def send(self, data):

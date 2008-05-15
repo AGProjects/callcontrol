@@ -10,4 +10,4 @@ clean::
 	-rm -rf build dist MANIFEST
 
 install/callcontrol::
-	install -m 0644 config.ini.sample etc/callcontrol/config.ini
+	install -m 0644 config.ini.sample debian/callcontrol/etc/callcontrol/config.ini
