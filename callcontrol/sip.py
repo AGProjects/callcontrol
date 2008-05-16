@@ -58,7 +58,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
     s.bind(SipConfig.listen)
 except socket.error, why:
-    fatal("Cannot bind to %s:%d for SIP messaging: %s" % tuple(SipConfig.listen + (why[1],)))
+    log.fatal("Cannot bind to %s:%d for SIP messaging: %s" % tuple(SipConfig.listen + (why[1],)))
 s.connect(SipConfig.proxy)
 SipConfig._sending_address = s.getsockname()
 s.close()

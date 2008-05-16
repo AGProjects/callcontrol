@@ -94,7 +94,10 @@ if __name__ == '__main__':
         log.err()
         sys.exit(1)
 
-    cserver.run()
+    try:
+        cserver.run()
+    except Exception, e:
+        log.error("failed to start SIP Call Control Server: %s" % e)
 
     if not options.fork:
         memory_dump()

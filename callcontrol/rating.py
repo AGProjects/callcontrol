@@ -37,12 +37,21 @@ class RatingEngineAddresses(list):
 
 class RatingConfig(ConfigSection):
     _datatypes = {'address': RatingEngineAddresses}
-    address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1])
+    address = []
     timeout = 500
 
 ## We use this to overwrite some of the settings above on a local basis if needed
 config_file = ConfigFile(configuration_filename)
-config_file.read_settings('CDRTool', RatingConfig)
+try:
+    config_file.read_settings('CDRTool', RatingConfig)
+except Exception, e:
+    log.fatal('Illegal values in config file: %s' % e)
+
+if not RatingConfig.address:
+    try:
+        RatingConfig.address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1])
+    except Exception, e:
+        log.fatal('Cannot resolve ostname %s' % ('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1]))
 
 
 class RatingError(Exception): pass
