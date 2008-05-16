@@ -1,6 +1,14 @@
 callcontrol (1.5.0) unstable; urgency=low
 
-  * Initial release.
+  * Migrating the entire application to python twisted.
+  * Changed protocol between openser call control module and call control
+    application to use a persistent connection. Module sends a multiple
+    CRLF-terminated line message, with a single empty CRLF-terminated line
+    signaling end of message; the application responds with a single
+    CRLF-terminated line.
+  * Added commands to the call control openser module - call control
+    application which are used by the init script to show a list of
+    sessions and session details.
 
  -- Lucian Stanescu <luci@ag-projects.com>  Thu, 15 May 2008 11:36:37 +0200
 
