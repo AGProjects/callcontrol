@@ -51,7 +51,7 @@ if not RatingConfig.address:
     try:
         RatingConfig.address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1])
     except Exception, e:
-        log.fatal('Cannot resolve ostname %s' % ('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1]))
+        log.fatal('Cannot resolve hostname %s' % ('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1]))
 
 
 class RatingError(Exception): pass
