@@ -16,6 +16,7 @@ import re
 from application.configuration import ConfigSection, ConfigFile
 from application.configuration.datatypes import NetworkAddress, EndpointAddress
 from application.python.util import Singleton
+from application.system import default_host_ip
 from application import log
 
 from twisted.internet.protocol import DatagramProtocol
@@ -38,7 +39,7 @@ class SipProxyAddress(EndpointAddress):
 class SipConfig(ConfigSection):
     _datatypes = {'listen': NetworkAddress, 'proxy': SipProxyAddress}
     listen     = ('0.0.0.0', 5070)
-    proxy      = None
+    proxy      = (default_host_ip, 5060)
 
 ## We use this to overwrite some of the settings above on a local basis if needed
 config_file = ConfigFile(configuration_filename)

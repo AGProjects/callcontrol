@@ -8,6 +8,7 @@ from collections import deque
 
 from application.configuration import ConfigSection, ConfigFile
 from application.configuration.datatypes import EndpointAddress
+from application.system import default_host_ip
 from application import log
 from application.python.util import Singleton
 
@@ -35,7 +36,7 @@ class RatingEngineAddresses(list):
 
 class RatingConfig(ConfigSection):
     _datatypes = {'address': RatingEngineAddresses}
-    address = [('127.0.0.1', 9024)]
+    address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1])
     timeout = 500
 
 ## We use this to overwrite some of the settings above on a local basis if needed

@@ -55,8 +55,7 @@
 ;                send to the specified address and port. address can be
 ;                an IP or a hostname. If port is missing assume 5060.
 ;
-;           Default value: None (call controller will not start until
-;                                this is properly defined)
+;           Default value: default localhost IP address
 ;
 ;listen = default
 ;proxy  = None
@@ -72,14 +71,14 @@
 ;                     credit for a SIP account) to this address. address can
 ;                     be an IP or a hostname. If port is missing assume 9024.
 ;
-;                Default value: 127.0.0.1
+;                Default value: cdrtool.<localdomain>
 ;
 ; timeout        Timeout after this many milliseconds while waiting for
 ;                response from rating engine.
 ;
-;                Default value: 1
+;                Default value: 500
 ;
-;address = 127.0.0.1
+;address = cdrtool.<localdomain>
 ;timeout = 500
 
 [RadiusDatabase]
