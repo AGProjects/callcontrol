@@ -4,6 +4,7 @@
 """Rating engine interface implementation."""
 
 import random
+import socket
 from collections import deque
 
 from application.configuration import ConfigSection, ConfigFile
