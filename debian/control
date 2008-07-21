@@ -9,7 +9,7 @@ Standards-Version: 3.7.3
 Package: callcontrol
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}, python-application (>= 1.0.9), python-twisted-core, python-sqlobject
-Description: SIP call control
+Description: Call control SIP prepaid application
  Call Control is an application that can be used together with OpenSER to
  limit the duration of SIP sessions. The applications that can be build upon
  this functionality include prepaid systems using an external rating engine

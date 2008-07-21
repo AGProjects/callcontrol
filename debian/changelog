@@ -1,3 +1,9 @@
+callcontrol (1.5.2) unstable; urgency=low
+
+  * Send BYEs for timed-out calls
+
+ -- Adrian Georgescu <adigeo@ag-projects.com>  Mon, 21 Jul 2008 17:59:13 +0200
+
 callcontrol (1.5.1) unstable; urgency=low
 
   * Fixed missing import statement
