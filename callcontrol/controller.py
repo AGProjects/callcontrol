@@ -114,6 +114,9 @@ class CallsMonitor(object):
                 staled.append(call)
         ## Terminate staled
         for call in staled:
+            sip = SipClient()
+            sip.send(call.callerBye)
+            sip.send(call.calledBye)
             call.end(reason='calls monitor as staled')
         ## Terminate calls that didn't setup in setupTime
         for call in nosetup:
