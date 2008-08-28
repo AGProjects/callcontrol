@@ -97,7 +97,13 @@ class SipClient(object):
 
     def send(self, data):
         if not self.__shutdown:
-            self.protocol.transport.write(data, self.proxy)
+            reactor.resolve(self.proxy[0]).addCallbacks(callback=self._finish_send, errback=self._err_resolve, callbackArgs=[self.proxy[1], data], errbackArgs=[self.proxy[0]])
+
+    def _finish_send(self, proxy_addr, proxy_port, data):
+        self.protocol.transport.write(data, (proxy_addr, proxy_port))
+
+    def _err_resolve(self, fail, hostname):
+        log.error("Cannot resolve hostname %s: %s" % (hostname, fail.value))
 
     def shutdown(self):
         self.__shutdown = True
