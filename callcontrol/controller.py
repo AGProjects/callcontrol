@@ -21,7 +21,7 @@ from twisted.python import failure
 
 from callcontrol.scheduler import RecurrentCall, KeepRunning
 from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
-from callcontrol.sip import Call, SipClient
+from callcontrol.sip import Call
 from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename, backup_calls_file
 
@@ -42,7 +42,7 @@ class TimeLimit(int):
 class CallControlConfig(ConfigSection):
     _datatypes = {'limit': TimeLimit}
     socket        = "%s/socket" % process.runtime_directory
-    group         = 'openser'
+    group         = 'opensips'
     limit         = None
     timeout       = 24*60*60 ## timeout calls that are stale for more than 24 hours.
     setupTime     = 90       ## timeout calls that take more than 1'30" to setup.
@@ -93,10 +93,7 @@ class CallsMonitor(object):
         call.end(calltime=callinfo['duration'], reason='calls monitor as terminated')
 
     def _handle_timedout(self, call, callinfo):
-        sip = SipClient()
-        sip.send(call.callerBye)
-        sip.send(call.calledBye)
-        call.end(reason='calls monitor as timedout')
+        call.end(reason='calls monitor as timedout', sendbye=True)
 
     def _finish_checks(self, value):
         ## Also do the rest of the checking
@@ -114,10 +111,7 @@ class CallsMonitor(object):
                 staled.append(call)
         ## Terminate staled
         for call in staled:
-            sip = SipClient()
-            sip.send(call.callerBye)
-            sip.send(call.calledBye)
-            call.end(reason='calls monitor as staled')
+            call.end(reason='calls monitor as staled', sendbye=True)
         ## Terminate calls that didn't setup in setupTime
         for call in nosetup:
             call.end(reason="calls monitor as it didn't setup in %d seconds" % CallControlConfig.setupTime)
@@ -211,15 +205,6 @@ class CallControlProtocol(LineOnlyReceiver):
             call.start(req)
             req.deferred.callback('Ok')
 
-    def _CC_update(self, req):
-        try:
-            call = self.factory.application.calls[req.callid]
-        except KeyError:
-            req.deferred.callback('Not found')
-        else:
-            call.update(req)
-            req.deferred.callback('Ok')
-
     def _CC_stop(self, req):
         try:
             call = self.factory.application.calls[req.callid]
@@ -264,7 +249,6 @@ class CallControlServer(object):
             pass
         
         self.listening = None
-        self.sipclient = None
         self.engines = None
         self.monitor = None
         self.db = RadiusDatabase()
@@ -308,16 +292,12 @@ class CallControlServer(object):
 
         ## Then setup the CallsMonitor
         self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
-        ## Initialize SipClient
-        self.sipclient = SipClient()
         ## Open the connection to the rating engines
         self.engines = RatingEngineConnections()
 
     def on_shutdown(self):
         if self.listening is not None:
             self.listening.stopListening()
-        if self.sipclient is not None:
-            self.sipclient.shutdown()
         if self.engines is not None:
             self.engines.shutdown()
         if self.monitor is not None:
@@ -394,7 +374,6 @@ class CallControlServer(object):
                             continue
                     ## close all calls that were already terminated or did timeout 
                     count = 0
-                    sip = SipClient()
                     for callinfo in terminated.values():
                         call = callinfo.get('call')
                         if call is not None:
@@ -403,9 +382,7 @@ class CallControlServer(object):
                     for callinfo in didtimeout.values():
                         call = callinfo.get('call')
                         if call is not None:
-                            sip.send(call.callerBye)
-                            sip.send(call.calledBye)
-                            call.end()
+                            call.end(sendbye=True)
                             count += 1
                     if count > 0:
                         log.info("Removed %d already terminated call%s" % (count, 's'*(count!=1)))
@@ -424,9 +401,8 @@ class CallControlServer(object):
 
 class Request(object):
     """A request parsed into a structure based on request type"""
-    __methods = {'init':   ('callid', 'contact', 'cseq', 'diverter', 'ruri', 'sourceip', 'from', 'fromtag', 'to'),
-                 'start':  ('callid', 'contact', 'totag'),
-                 'update': ('callid', 'cseq', 'fromtag'),
+    __methods = {'init':   ('callid', 'diverter', 'ruri', 'sourceip', 'from'),
+                 'start':  ('callid', 'dialogid'),
                  'stop':   ('callid',),
                  'debug':  ('show',)}
     def __init__(self, cmd, params):
@@ -458,7 +434,7 @@ class Request(object):
         if self.show == 'session':
             try:
                 if not self.callid:
-                    raise AttributeError()
+                    raise InvalidRequestError("Missing callid from request")
             except AttributeError:
                 raise InvalidRequestError("Missing callid from request")
         elif self.show == 'sessions':
@@ -471,11 +447,9 @@ class Request(object):
 
     def __str__(self):
         if self.cmd == 'init':
-            return "%(cmd)s: callid=%(callid)s from=%(from_)s to=%(to)s ruri=%(ruri)s cseq=%(cseq)s diverter=%(diverter)s sourceip=%(sourceip)s contact=%(contact)s fromtag=%(fromtag)s" % self.__dict__
+            return "%(cmd)s: callid=%(callid)s from=%(from_)s ruri=%(ruri)s diverter=%(diverter)s sourceip=%(sourceip)s" % self.__dict__
         elif self.cmd == 'start':
-            return "%(cmd)s: callid=%(callid)s contact=%(contact)s totag=%(totag)s" % self.__dict__
-        elif self.cmd == 'update':
-            return "%(cmd)s: callid=%(callid)s cseq=%(cseq)s fromtag=%(fromtag)s" % self.__dict__
+            return "%(cmd)s: callid=%(callid)s dialogid=%(dialogid)s" % self.__dict__
         elif self.cmd == 'stop':
             return "%(cmd)s: callid=%(callid)s" % self.__dict__
         elif self.cmd == 'debug':

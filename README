@@ -2,7 +2,7 @@
 Description
 -----------
 
-Call Control is an application that can be used together with OpenSER to
+Call Control is an application that can be used together with OpenSIPS to
 limit the duration of SIP sessions. The applications that can be build upon
 this functionality include prepaid systems using an external rating engine
 (by default CDRTool rating engine is used), for limiting the maximum call

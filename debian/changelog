@@ -1,3 +1,9 @@
+callcontrol (2.0.0) unstable; urgency=low
+
+  * Adapt the application to using the dialog module for sending BYEs
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Thu, 04 Sep 2008 14:34:33 +0200
+
 callcontrol (1.5.2) unstable; urgency=low
 
   * Send BYEs for timed-out calls
@@ -13,12 +19,12 @@ callcontrol (1.5.1) unstable; urgency=low
 callcontrol (1.5.0) unstable; urgency=low
 
   * Migrating the entire application to python twisted.
-  * Changed protocol between openser call control module and call control
+  * Changed protocol between opensips call control module and call control
     application to use a persistent connection. Module sends a multiple
     CRLF-terminated line message, with a single empty CRLF-terminated line
     signaling end of message; the application responds with a single
     CRLF-terminated line.
-  * Added commands to the call control openser module - call control
+  * Added commands to the call control opensips module - call control
     application which are used by the init script to show a list of
     sessions and session details.
 

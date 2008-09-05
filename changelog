@@ -1,16 +1,28 @@
+Changes from version 1.5.2 to 2.0.0
+-----------------------------------
+
+- Adapt the application to using the dialog module for sending BYEs
+
+Changes from version 1.5.1 to 1.5.2
+-----------------------------------
+
+- Send BYEs for timed-out calls 
+
 Changes from version 1.5.0 to 1.5.1
+-----------------------------------
 
 - Fixed missing import statement
 
 Changes from version 1.4.2 to 1.5.0
+-----------------------------------
 
 - Migrating the entire application to python twisted.
-- Changed protocol between openser call control module and call control
+- Changed protocol between opensips call control module and call control
   application to use a persistent connection. Module sends a multiple
   CRLF-terminated line message, with a single empty CRLF-terminated line
   signaling end of message; the application responds with a single
   CRLF-terminated line.
-- Added commands to the call control openser module - call control
+- Added commands to the call control opensips module - call control
   application which are used by the init script to show a list of
   sessions and session details.
 
@@ -59,13 +71,13 @@ Changes from version 1.3.3 to 1.3.4
 Changes from version 1.3.2 to 1.3.3
 -----------------------------------
 
-- Default to openser instead of ser in the configuration
+- Default to opensips instead of ser in the configuration
 
 
 Changes from version 1.3.1 to 1.3.2
 -----------------------------------
 
-- Updated the ser module to work with openser-1.0.0
+- Updated the ser module to work with opensips-1.0.0
 
 
 Changes from version 1.3.0 to 1.3.1
