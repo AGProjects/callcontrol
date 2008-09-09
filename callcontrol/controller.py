@@ -162,8 +162,14 @@ class CallControlProtocol(LineOnlyReceiver):
             if call.provider is None:
                 req.deferred.callback('No provider')
                 return
-#            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
+            if call.callid in self.factory.application.users.get(call.billingParty, ()):
+                log.error("Call id %s of %s exists in users table but not in calls table" % (call.callid, call.user))
+                req.deferred.callback('Locked')
+            self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
             self.factory.application.calls[req.callid] = call
+#            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
+        else:
+            log.error("Call id %s already exists" % req.callid)
         deferred = call.setup(req)
         deferred.addCallbacks(callback=self._CC_finish_init, errback=self._CC_init_failed, callbackArgs=[req], errbackArgs=[req])
 
@@ -254,14 +260,26 @@ class CallControlServer(object):
         self.db = RadiusDatabase()
         
         self.calls = {}
+        self.users = {}
         self._restore_calls()
 
     def clean_call(self, callid):
         try:
-            del self.calls[callid]
-#            log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
+            call = self.calls[callid]
         except KeyError:
             pass
+        else:
+            del self.calls[callid]
+            try:
+                user_calls = self.users[call.billingParty]
+                user_calls.remove(callid)
+                if len(user_calls) == 0:
+                    del self.users[call.billingParty]
+                    self.engines.remove_user(call.billingParty)
+            except valueError:
+                log.error("Call id %s of %s existed in calls table but not in users table" % (call.callid, call.user))
+#            log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
+
 
     def run(self):
         ## Do the startup stuff
@@ -398,6 +416,9 @@ class CallControlServer(object):
                         call.timer.start()
                     elif call.timer == 'idle':
                         call._setup_timer()
+
+                    # also restore users table
+                    self.users.setdefault(call.billingParty, []).append(callid)
 
 class Request(object):
     """A request parsed into a structure based on request type"""

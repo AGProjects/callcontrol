@@ -135,8 +135,13 @@ class RatingEngineProtocol(LineOnlyReceiver):
             log.warn("Rating engine possible failed query: %s" % cmd)
         elif result == 'Failed':
             log.warn("Rating engine failed query: %s" % cmd)
-        totalcost = lines[1].strip()
-        return totalcost
+        try:
+            timelimit = int(lines[1].split('=', 1)[1].strip())
+        except:
+            log.error("Invalid reply from rating engine for DebitBalance on line 2: `%s'" % lines[1])
+            timelimit = None
+        totalcost = lines[2].strip()
+        return timelimit, totalcost
 
 
     def _send_next_request(self):
@@ -237,10 +242,21 @@ class RatingEngineConnections(object):
 
     def __init__(self):
         self.connections = [RatingEngine(engine) for engine in RatingConfig.address]
+        self.user_connections = {}
+
     @staticmethod
-    def getConnection():
-        conn = RatingEngineConnections()
-        return random.choice(conn.connections)
+    def getConnection(call=None):
+        engines = RatingEngineConnections()
+        conn = random.choice(engines.connections)
+        if call is None:
+            return conn
+        return engines.user_connections.setdefault(call.billingParty, conn)
+
+    def remove_user(self, user):
+        try:
+            del self.user_connections[user]
+        except KeyError:
+            pass
 
     def shutdown(self):
         for engine in self.connections:

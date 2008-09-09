@@ -56,6 +56,20 @@ class ReactorTimer(object):
             except AlreadyCalled:
                 self.dcall = None
 
+    def delay(self, seconds):
+        if self.dcall is not None:
+            try:
+                self.dcall.delay(seconds)
+            except AlreadyCalled:
+                self.dcall = None
+
+    def reset(self, seconds):
+        if self.dcall is not None:
+            try:
+                self.dcall.reset(seconds)
+            except AlreadyCalled:
+                self.dcall = None
+
 
 class Structure(dict):
     def __init__(self):
@@ -147,7 +161,7 @@ class Call(Structure):
         parameters and redo the setup to update the timer and time limit.
         """
         deferred = defer.Deferred()
-        rating = RatingEngineConnections.getConnection()
+        rating = RatingEngineConnections.getConnection(self)
         if not self.__initialized: ## setup called for the first time
             rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
@@ -185,7 +199,7 @@ class Call(Structure):
         if self.diverter is not None:
             self.billingParty = 'sip:%s' % self.diverter
         ## update time limit and timer
-        rating = RatingEngineConnections.getConnection()
+        rating = RatingEngineConnections.getConnection(self)
         rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
 
     def _setup_timer(self, timeout=None):
@@ -204,6 +218,50 @@ class Call(Structure):
             if self.timer is not None:
                 log.info("Call id %s of %s started for maximum %d seconds" % (self.callid, self.user, self.timelimit))
                 self.timer.start()
+            # also reset all calls of user to this call's timelimit
+            # no reason to alter other calls if this call is not prepaid
+            if self.prepaid:
+                rating = RatingEngineConnections.getConnection(self)
+                rating.getCallLimit(self).addCallbacks(callback=self._start_finish_calllimit, errback=self._start_error)
+                for callid in self.application.users[self.billingParty]:
+                    if callid == self.callid:
+                        continue
+                    try:
+                        call = self.application.calls[callid]
+                    except KeyError:
+                        log.error("Call id %s exists in users table but not in calls table" % callid)
+                    else:
+                        if not call.prepaid:
+                            continue # only alter prepaid calls
+                        if call.inprogress:
+                            call.timelimit = self.starttime - call.startime + self.timelimit
+                            if call.timer:
+                                call.timer.reset(self.timelimit)
+                        elif not call.complete:
+                            call.timelimit = self.timelimit
+                            call._setup_timer()
+
+    def _start_finish_calllimit(self, limit):
+        if limit is not None:
+            delay = limit - self.timelimit
+            for callid in self.application.users[self.billingParty]:
+                try:
+                    call = self.application.calls[callid]
+                except KeyError:
+                    log.error("Call id %s exists in users table but not in calls table" % callid)
+                else:
+                    if not call.prepaid:
+                        continue # only alter prepaid calls
+                    if call.inprogress:
+                        call.timelimit += delay
+                        if call.timer:
+                            call.timer.delay(delay)
+                    elif not call.complete:
+                        call.timelimit = self.timelimit
+                        call._setup_timer()
+
+    def _start_error(self, fail, deferred):
+        deferred.errback(fail)
 
     def end(self, calltime=None, reason=None, sendbye=False):
         if sendbye and self.dialogid is not None:
@@ -228,13 +286,31 @@ class Call(Structure):
                 self.duration = duration
         if self.prepaid and not self.locked:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
-            rating = RatingEngineConnections.getConnection()
-            rating.debitBalance(self).addCallbacks(callback=self._print_ended, callbackArgs=[reason and fullreason or None])
+            rating = RatingEngineConnections.getConnection(self)
+            rating.debitBalance(self).addCallbacks(callback=self._end_finish, callbackArgs=[reason and fullreason or None])
         elif reason is not None:
             log.info("Call id %s of %s %s%s" % (self.callid, self.user, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
         self.timer = None
 
-    def _print_ended(self, value, reason):
+    def _end_finish(self, (timelimit, value), reason):
+        if timelimit is not None and timelimit > 0:
+            now = time.time()
+            for callid in self.application.users.get(self.billingParty, ()):
+                try:
+                    call = self.application.calls[callid]
+                except KeyError:
+                    log.error("Call id %s exists in users table but not in calls table" % callid)
+                else:
+                    if not call.prepaid:
+                        continue # only alter prepaid calls
+                    if call.inprogress:
+                        call.timelimit = now - call.startime + timelimit
+                        if call.timer:
+                            call.timer.reset(timelimit)
+                    elif not call.complete:
+                        call.timelimit = timelimit
+                        call._setup_timer()
+        # log ended call
         if self.duration > 0:
             log.info("Call id %s of %s %s after %d seconds, call price is %s" % (self.callid, self.user, reason, self.duration, value))
         elif reason is not None:
