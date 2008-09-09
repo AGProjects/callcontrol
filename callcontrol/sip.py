@@ -237,6 +237,7 @@ class Call(Structure):
                             call.timelimit = self.starttime - call.startime + self.timelimit
                             if call.timer:
                                 call.timer.reset(self.timelimit)
+                                log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, self.timelimit))
                         elif not call.complete:
                             call.timelimit = self.timelimit
                             call._setup_timer()
@@ -256,6 +257,7 @@ class Call(Structure):
                         call.timelimit += delay
                         if call.timer:
                             call.timer.delay(delay)
+                            log.info("Call id %s of %s delayed with %d seconds from it's normal end time" % (callid, call.user, delay))
                     elif not call.complete:
                         call.timelimit = self.timelimit
                         call._setup_timer()
@@ -306,6 +308,7 @@ class Call(Structure):
                     if call.inprogress:
                         call.timelimit = now - call.startime + timelimit
                         if call.timer:
+                            log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, self.timelimit))
                             call.timer.reset(timelimit)
                     elif not call.complete:
                         call.timelimit = timelimit
