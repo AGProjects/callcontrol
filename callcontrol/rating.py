@@ -224,8 +224,11 @@ class RatingEngine(object):
     
     def getCallLimit(self, call):
         if self.connection is not None:
+            args = {}
+            if call.inprogress:
+                args['State'] = 'Connected'
             req = RatingRequest('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
-                          Gateway=call.sourceip, Duration=36000, Lock=1)
+                          Gateway=call.sourceip, Duration=36000, Lock=1, **args)
             return self.connection.protocol.send_request(req).deferred
         return defer.fail(failure.Failure(RatingEngineError('Connection with Rating Engine is down')))
     

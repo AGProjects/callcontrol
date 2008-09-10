@@ -165,11 +165,14 @@ class CallControlProtocol(LineOnlyReceiver):
             if call.callid in self.factory.application.users.get(call.billingParty, ()):
                 log.error("Call id %s of %s exists in users table but not in calls table" % (call.callid, call.user))
                 req.deferred.callback('Locked')
+                return
             self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
             self.factory.application.calls[req.callid] = call
 #            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
         else:
             log.error("Call id %s already exists" % req.callid)
+            req.deferred.callback('Locked')
+            return
         deferred = call.setup(req)
         deferred.addCallbacks(callback=self._CC_finish_init, errback=self._CC_init_failed, callbackArgs=[req], errbackArgs=[req])
 

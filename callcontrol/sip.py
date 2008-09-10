@@ -39,7 +39,7 @@ class InvalidRequestError(Exception): pass
 
 class ReactorTimer(object):
     def __init__(self, delay, function, args=[], kwargs={}):
-        self.delay = delay
+        self.calldelay = delay
         self.function = function
         self.args = args
         self.kwargs = kwargs
@@ -47,7 +47,7 @@ class ReactorTimer(object):
 
     def start(self):
         if self.dcall is None:
-            self.dcall = reactor.callLater(self.delay, self.function, *self.args, **self.kwargs)
+            self.dcall = reactor.callLater(self.calldelay, self.function, *self.args, **self.kwargs)
 
     def cancel(self):
         if self.dcall is not None:
@@ -234,7 +234,7 @@ class Call(Structure):
                         if not call.prepaid:
                             continue # only alter prepaid calls
                         if call.inprogress:
-                            call.timelimit = self.starttime - call.startime + self.timelimit
+                            call.timelimit = self.starttime - call.starttime + self.timelimit
                             if call.timer:
                                 call.timer.reset(self.timelimit)
                                 log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, self.timelimit))
@@ -273,7 +273,7 @@ class Call(Structure):
         fullreason = '%s%s' % (self.inprogress and 'terminated' or 'canceled', reason and (' by %s' % reason) or '')
         if self.inprogress:
             self.endtime = time.time()
-            duration = int(round(self.endtime - self.starttime))
+            duration = self.endtime - self.starttime
             if calltime:
                 ## call did timeout and was ended by external means (like mediaproxy).
                 ## we were notified of this and we have the actual call duration in `calltime'
@@ -306,9 +306,9 @@ class Call(Structure):
                     if not call.prepaid:
                         continue # only alter prepaid calls
                     if call.inprogress:
-                        call.timelimit = now - call.startime + timelimit
+                        call.timelimit = now - call.starttime + timelimit
                         if call.timer:
-                            log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, self.timelimit))
+                            log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, timelimit))
                             call.timer.reset(timelimit)
                     elif not call.complete:
                         call.timelimit = timelimit
