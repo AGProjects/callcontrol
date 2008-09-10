@@ -1,5 +1,5 @@
 Source: callcontrol
-Section: net
+Section: non-free/net
 Priority: optional
 Maintainer: Lucian Stanescu <luci@ag-projects.com>
 Uploaders: Dan Pascu <dan@ag-projects.com>, Adrian Georgescu <ag@ag-projects.com>
