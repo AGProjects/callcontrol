@@ -1,8 +1,12 @@
 callcontrol (2.0.0) unstable; urgency=low
 
+  [ Lucian Stanescu ]
   * Adapt the application to using the dialog module for sending BYEs
 
- -- Lucian Stanescu <luci@ag-projects.com>  Thu, 04 Sep 2008 14:34:33 +0200
+  [ Adrian Georgescu ]
+  * Added link to PREPAID API documentation from CDRTool
+
+ -- Adrian Georgescu <ag@ag-projects.com>  Sun, 19 Oct 2008 15:43:30 +0200
 
 callcontrol (1.5.2) unstable; urgency=low
 

@@ -24,69 +24,8 @@ For licensing information please read the LICENSE file.
 Prepaid Engine API
 ------------------
 
-Below is a description of the API used to communicate with the rating engine.
-The prepaid engine is used to compute session times based on user credit and
-destination rates. The rating engine is accessible over a TCP socket.
+The API between call control and the rating engine is described in CDRTool
+documentatation available at:
 
-Call control sends commands (described below) to the remote engine that handles
-the prepaid accounts. A command is a line of text with a keyword which is the
-command itself followed by a number of parameters separated by space.
-The command ends with an enter in unix style: '\n'
-For each such request there will be a reply on one or more lines, containing
-information that depends on the command that was sent.
-A reply ends when a double enter is received: \n\n (this is needed because
-there are commands that require multiline responses). How the information
-contained in a reply is to be interpreted depends on the command itself and
-is described below.
-
-
-1. Asking for the call time limit
-   ------------------------------
-
-To request the maximum time that a call can have given the user credit and
-destination rates, use the following request:
-
-MaxSessionTime From=sip:123@example.com To=sip:0031650222 Duration=7200 Lock=1\n
-
-Duration is a limit imposed to the time allowed, in case you want to limit
-call times. This will be a top limit for the call's time, even if the user
-could talk more than that based on his current credit. our sip server
-currently limits all calls to 10 hours (Duration=36000) Lock specifies if
-the account is to be locked or not (i.e. don't allow the same user make
-multiple calls at the same time). This is used because sometimes we only
-need to peek at the time but not actually start a call and lock the user.
-when the call starts the account is always locked. To may actually be
-sip:number@domain;param=value so you must extract the username part which is
-the number From is a sip URI which can be "full name"
-
-Call control expects a reply like below:
-
-value\n\n
-
-value is the numeric time in seconds, or one of the keywords Locked or None
-(None meaning it's not a prepaid account and it doesn't have any limitation,
-or it's a free destination, like a 0800... number). 
-There is no empty line before value (response starts with value on the first
-line and then it has 2 enters unix style as described).
-
-2. Debiting the balance when the conversation ends
-   -----------------------------------------------
-
-To debit money from the user account when the conversation ends send the
-following command:
-
-DebitBalance From=sip:123@example.com To=sip:0031650222 Duration=59
-
-Same notes about the From and To fields as above apply.
-
-and expects in return:
-
-value\n\n
-
-where value is one of: `Ok' (success), `Failed' (failure), `Not prepaid'
-(account is not prepaid - this case is not considered a failure)
-Note: the value is returned without the quotes shown above.
-
-There are cases where we call DebitBalance with a 0 duration. This is valid
-and should unlock the account but leave the credit untouched.
+http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
 
