@@ -17,9 +17,18 @@ however not send these fake BYE messages if the call is normally terminated
 by either party involved in the conversation, before the call maximum
 allowed time is exceeded.
 
-Call Control works together with MediaProxy >=2.0 to also terminate calls
-that have timed-out because the RTP streams have stopped flowing without
-BYE.
+The software is able to handle parallel sessions for prepaid users. The
+modus operandi is based on a simple model: all prepaid sessions belonging to
+the same SIP account must end at the same moment regadless of the called
+destinations and their different prices. Whenever CDRTool rating engine
+provides the MaxSessionTime for a new call setup, call control engine adjust
+the maxsessions time for all sessions belonging to the same user. For more
+information see chapter 'Simultaneous prepaid sessions' from
+http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
+
+Call Control works also together with MediaProxy >=2.0 to terminate calls
+that have timed-out because the RTP stream(s) have stopped flowing without
+a BYE being received by the SIP Proxy.
 
 
 License
@@ -34,7 +43,7 @@ Installation
 The application requires callcontrol module available in OpenSIPS >=1.5 and
 CDRTool >= 6.6.10.
 
-For installation information please consult the INSTALL file.
+For more information please consult the INSTALL file.
 
 
 Prepaid Engine API
