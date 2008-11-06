@@ -18,7 +18,8 @@ by either party involved in the conversation, before the call maximum
 allowed time is exceeded.
 
 Call Control works together with MediaProxy >=2.0 to also terminate calls
-that have timedout because of RTP ahs stopped flowing without BYE.
+that have timed-out because the RTP streams have stopped flowing without
+BYE.
 
 
 License
