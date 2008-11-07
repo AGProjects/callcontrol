@@ -35,15 +35,33 @@ class RatingEngineAddresses(list):
         engines = [RatingEngineAddress(engine) for engine in engines]
         return engines
 
+class TimeLimit(int):
+    """A positive time limit (in seconds) or None"""
+    def __new__(typ, value):
+        if value.lower() == 'none':
+            return None
+        try:
+            limit = int(value)
+        except:
+            raise ValueError("invalid time limit value: %r" % value)
+        if limit < 0:
+            raise ValueError("invalid time limit value: %r. should be positive." % value)
+        return limit
+
 class RatingConfig(ConfigSection):
     _datatypes = {'address': RatingEngineAddresses}
     address = []
     timeout = 500
 
+class CallControlConfig(ConfigSection):
+    _datatypes = {'prepaid_limit': TimeLimit}
+    prepaid_limit = None
+
 ## We use this to overwrite some of the settings above on a local basis if needed
 config_file = ConfigFile(configuration_filename)
 try:
     config_file.read_settings('CDRTool', RatingConfig)
+    config_file.read_settings('CallControl', CallControlConfig)
 except Exception, e:
     log.fatal('Illegal values in config file: %s' % e)
 
