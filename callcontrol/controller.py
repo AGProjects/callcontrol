@@ -163,7 +163,7 @@ class CallControlProtocol(LineOnlyReceiver):
                 req.deferred.callback('No provider')
                 return
             if call.callid in self.factory.application.users.get(call.billingParty, ()):
-                log.error("Call id %s of %s exists in users table but not in calls table" % (call.callid, call.user))
+                log.error("Call id %s of %s to %s exists in users table but not in calls table" % (call.callid, call.user, call.ruri))
                 req.deferred.callback('Locked')
                 return
             self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
@@ -184,17 +184,17 @@ class CallControlProtocol(LineOnlyReceiver):
             req.deferred.callback('Error')
         else:
             if call.locked: ## prepaid account already locked by another call
-                log.info("Call id %s of %s forbidden because the account is locked" % (req.callid, call.user))
+                log.info("Call id %s of %s to %s forbidden because the account is locked" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Locked')
             elif call.timelimit == 0: ## prepaid account with no credit
-                log.info("Call id %s of %s forbidden because credit is too low" % (req.callid, call.user))
+                log.info("Call id %s of %s to %s forbidden because credit is too low" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No credit')
             elif call.timelimit is None: ## no limit for call
-                log.info("Call id %s of %s is not limited" % (req.callid, call.user))
+                log.info("Call id %s of %s to %s is postpaid not limited" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No limit') # No limit
@@ -229,7 +229,7 @@ class CallControlProtocol(LineOnlyReceiver):
         if req.show == 'sessions':
             for callid, call in self.factory.application.calls.items():
                 if not req.user or call.user.startswith(req.user):
-                    debugstr += 'Call id %s of %s: %s\n' % (callid, call.user, call.status)
+                    debugstr += 'Call id %s of %s to %s: %s\n' % (callid, call.user, call.ruri, call.status)
         elif req.show == 'session':
             try:
                 call = self.factory.application.calls[req.callid]

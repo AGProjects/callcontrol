@@ -216,7 +216,7 @@ class Call(Structure):
             self.dialogid = DialogID(request.dialogid)
             self.starttime = time.time()
             if self.timer is not None:
-                log.info("Call id %s of %s started for maximum %d seconds" % (self.callid, self.user, self.timelimit))
+                log.info("Call id %s of %s to %s started for maximum %d seconds" % (self.callid, self.user, self.ruri, self.timelimit))
                 self.timer.start()
             # also reset all calls of user to this call's timelimit
             # no reason to alter other calls if this call is not prepaid
@@ -237,7 +237,7 @@ class Call(Structure):
                             call.timelimit = self.starttime - call.starttime + self.timelimit
                             if call.timer:
                                 call.timer.reset(self.timelimit)
-                                log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, self.timelimit))
+                                log.info("Call id %s of %s to %s also set to %d seconds" % (callid, call.user, call.ruri, self.timelimit))
                         elif not call.complete:
                             call.timelimit = self.timelimit
                             call._setup_timer()
@@ -257,7 +257,7 @@ class Call(Structure):
                         call.timelimit += delay
                         if call.timer:
                             call.timer.delay(delay)
-                            log.info("Call id %s of %s delayed with %d seconds from it's normal end time" % (callid, call.user, delay))
+                            log.info("Call id %s of %s to %s %s maximum %d seconds" % (callid, call.user, call.ruri, (call is self) and 'connected for' or 'previously connected set to', limit))
                     elif not call.complete:
                         call.timelimit = self.timelimit
                         call._setup_timer()
@@ -279,7 +279,7 @@ class Call(Structure):
                 ## we were notified of this and we have the actual call duration in `calltime'
                 #self.endtime = self.starttime + calltime
                 self.duration = calltime
-                log.info("Call id %s of %s was already terminated (ended or did timeout) after %s seconds" % (self.callid, self.user, self.duration))
+                log.info("Call id %s of %s to %s was already disconnected (ended or did timeout) after %s seconds" % (self.callid, self.user, self.ruri, self.duration))
             elif self.expired:
                 self.duration = self.timelimit
                 if duration > self.timelimit + 10:
@@ -291,7 +291,7 @@ class Call(Structure):
             rating = RatingEngineConnections.getConnection(self)
             rating.debitBalance(self).addCallbacks(callback=self._end_finish, callbackArgs=[reason and fullreason or None])
         elif reason is not None:
-            log.info("Call id %s of %s %s%s" % (self.callid, self.user, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
+            log.info("Call id %s of %s to %s %s%s" % (self.callid, self.user, self.ruri, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
         self.timer = None
 
     def _end_finish(self, (timelimit, value), reason):
@@ -308,14 +308,14 @@ class Call(Structure):
                     if call.inprogress:
                         call.timelimit = now - call.starttime + timelimit
                         if call.timer:
-                            log.info("Call id %s of %s resetted to %d seconds from now" % (callid, call.user, timelimit))
+                            log.info("Call id %s of %s to %s previously connected set to %d seconds" % (callid, call.user, call.ruri, timelimit))
                             call.timer.reset(timelimit)
                     elif not call.complete:
                         call.timelimit = timelimit
                         call._setup_timer()
         # log ended call
         if self.duration > 0:
-            log.info("Call id %s of %s %s after %d seconds, call price is %s" % (self.callid, self.user, reason, self.duration, value))
+            log.info("Call id %s of %s to %s %s after %d seconds, call price is %s" % (self.callid, self.user, self.ruri, reason, self.duration, value))
         elif reason is not None:
             log.info("Call id %s of %s %s" % (self.callid, self.user, reason))
     
