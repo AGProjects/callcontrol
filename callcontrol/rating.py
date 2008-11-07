@@ -77,11 +77,12 @@ class RatingEngineError(RatingError): pass
 class RatingEngineTimeoutError(TimeoutError): pass
 
 class RatingRequest(str):
-    def __init__(self, command, **kwargs):
+    def __init__(self, command, reliable=True, **kwargs):
         self.command = command
+        self.reliable = reliable
         self.kwargs = kwargs
         self.deferred = defer.Deferred()
-    def __new__(cls, command, **kwargs):
+    def __new__(cls, command, reliable=True, **kwargs):
         reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name,value) for name, value in kwargs.items())) or '')
         obj = str.__new__(cls, reqstr)
         return obj
@@ -98,13 +99,18 @@ class RatingEngineProtocol(LineOnlyReceiver):
         log.info("Connected to Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = True
         self.factory.application.connectionMade(self.transport.connector)
+        if self._request_queue:
+            self._send_next_request()
 
     def connectionLost(self, reason=None):
         log.info("Disconnected from Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = False
         if self.__request:
-            self._request_queue.appendleft(self.__request)
-            self.__request = None
+            if self.__request.reliable:
+                self._request_queue.appendleft(self.__request)
+                self.__request = None
+            else:
+                self._respond("Connection with the Rating Engine is down: %s" % reason, success=False)
         self.factory.application.connectionLost(self.transport.connector, reason, self)
 
     def timeoutConnection(self):
@@ -138,10 +144,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 elif limit == 'Locked':
                     pass
                 else:
-                    raise ValueError("limit must be a positive number, None or Locked")
+                    raise ValueError("limit must be a non-negative number, None or Locked: %s" % str(limit))
             else:
                 if limit < 0:
-                    raise ValueError("limit must be a positive number, None or Locked")
+                    raise ValueError("limit must be a non-negative number, None or Locked: %s" % str(limit))
         except Exception, e:
             raise e
         return limit
@@ -151,7 +157,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
         lines = line.splitlines()
         result = lines[0].strip().capitalize()
         if result not in valid_answers:
-            log.error("Invalid reply from rating engine: `%s'" % result)
+            log.error("Invalid reply from rating engine: `%s'" % lines[0].strip())
             log.warn("Rating engine possible failed query: %s" % self.__request)
             raise RatingEngineError('Invalid rating engine response')
         elif result == 'Failed':
@@ -167,14 +173,13 @@ class RatingEngineProtocol(LineOnlyReceiver):
 
 
     def _send_next_request(self):
-        self.__request = self._request_queue.popleft()
         if self.connected:
+            self.__request = self._request_queue.popleft()
             self.sendLine(self.__request)
             self._set_timeout()
 #            log.debug("Sent request to rating engine: %s" % self.__request) #DEBUG
         else:
-            self._request_queue.appendleft(self.__request)
-            self._request = None
+            self.__request = None
 
     def _respond(self, result, success=True):
         req = self.__request
@@ -192,6 +197,9 @@ class RatingEngineProtocol(LineOnlyReceiver):
         self.__timeout_call = reactor.callLater(timeout/1000.0, self.timeoutConnection)
 
     def send_request(self, request):
+        if not request.reliable and not self.connected:
+            req.deferred.errback(failure.Failure(RatingEngineError("Connection with the Rating Engine is down")))
+            return
         self._request_queue.append(request)
         if self.__request is None:
             self._send_next_request()
@@ -241,21 +249,29 @@ class RatingEngine(object):
 
     def connectionMade(self, connector):
         self.connection = connector.transport
-        while self.__unsent_req:
-            req = self.__unsent_req.popleft()
-            self.connection.protocol.send_request(req)
+        self.connection.protocol._request_queue.extend(self.__unsent_req)
+        for req in self.__unsent_req:
+            log.debug("Requeueing request for the rating engine: %s" % (req,))
+        self.__unsent_req.clear()
 
     def connectionLost(self, connector, reason, protocol):
-        self.__unsent_req.extendleft(reversed(protocol._request_queue))
+        while protocol._request_queue:
+            req = protocol._request_queue.pop()
+            if not req.reliable:
+                log.debug("Request is considered failed: %s" % (req,))
+                req.deferred.errback(failure.Failure(RatingEngineError("Connection with the Rating Engine is down")))
+            else:
+                log.debug("Saving request to be requeued later: %s" % (req,))
+                self.__unsent_req.appendleft(req)
         self.connection = None
     
-    def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit):
+    def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit, reliable=True):
         if max_duration is None:
             max_duration = 36000
         args = {}
         if call.inprogress:
             args['State'] = 'Connected'
-        req = RatingRequest('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
+        req = RatingRequest('MaxSessionTime', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
                           Gateway=call.sourceip, Duration=max_duration, Lock=1, **args)
         if self.connection is not None:
             return self.connection.protocol.send_request(req).deferred
@@ -263,8 +279,8 @@ class RatingEngine(object):
             self.__unsent_req.append(req)
             return req.deferred
     
-    def debitBalance(self, call):
-        req = RatingRequest('DebitBalance', CallId=call.callid, From=call.billingParty, To=call.ruri,
+    def debitBalance(self, call, reliable=True):
+        req = RatingRequest('DebitBalance', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
                       Gateway=call.sourceip, Duration=call.duration)
         if self.connection is not None:
             return self.connection.protocol.send_request(req).deferred

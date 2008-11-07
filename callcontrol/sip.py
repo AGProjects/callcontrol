@@ -163,7 +163,7 @@ class Call(Structure):
         deferred = defer.Deferred()
         rating = RatingEngineConnections.getConnection(self)
         if not self.__initialized: ## setup called for the first time
-            rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+            rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
         elif self.__initialized and self.starttime is None: ## call was previously setup but not yet started
             if self.diverter != request.diverter or self.ruri != request.ruri:
@@ -200,7 +200,7 @@ class Call(Structure):
             self.billingParty = 'sip:%s' % self.diverter
         ## update time limit and timer
         rating = RatingEngineConnections.getConnection(self)
-        rating.getCallLimit(self).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+        rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
 
     def _setup_timer(self, timeout=None):
         if timeout is None:

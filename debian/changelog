@@ -5,6 +5,7 @@ callcontrol (2.0.0) unstable; urgency=low
   * Add setting to limit the session time of prepaid calls
   * Change logging output to show destination
   * Do not lose requests sent to the rating engine
+  * Do not retransmit the first MaxSessionTime as this will cause openser to wait
 
   [ Adrian Georgescu ]
   * Added INSTALL and LICENSE files
