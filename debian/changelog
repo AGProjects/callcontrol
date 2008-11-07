@@ -6,6 +6,7 @@ callcontrol (2.0.0) unstable; urgency=low
   * Change logging output to show destination
   * Do not lose requests sent to the rating engine
   * Do not retransmit the first MaxSessionTime as this will cause openser to wait
+  * Fixed bugs related to exceptions getting thrown in connectionLost and RatingEngineProtocol._respond
 
   [ Adrian Georgescu ]
   * Added INSTALL and LICENSE files

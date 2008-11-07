@@ -105,7 +105,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def connectionLost(self, reason=None):
         log.info("Disconnected from Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = False
-        if self.__request:
+        if self.__request is not None:
             if self.__request.reliable:
                 self._request_queue.appendleft(self.__request)
                 self.__request = None
@@ -126,10 +126,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
         if self.__request is None:
             log.warn("Got reply for unexisting request: %s" % line)
             return
-        def _unknown_handler(line):
-            self._respond("Unknown command in request. Cannot handle reply. Reply is: %s" % line, success=False)
         try:
-            self._respond(getattr(self, '_PE_%s' % self.__request.command.lower(), _unknown_handler)(line))
+            self._respond(getattr(self, '_PE_%s' % self.__request.command.lower())(line))
+        except AttributeError:
+            self._respond("Unknown command in request. Cannot handle reply. Reply is: %s" % line, success=False)
         except Exception, e:
             self._respond(str(e), success=False)
 
@@ -182,12 +182,16 @@ class RatingEngineProtocol(LineOnlyReceiver):
             self.__request = None
 
     def _respond(self, result, success=True):
-        req = self.__request
-        self.__request = None
-        if success:
-            req.deferred.callback(result)
-        else:
-            req.deferred.errback(failure.Failure(RatingEngineError(result)))
+        if self.__request is not None:
+            req = self.__request
+            self.__request = None
+            try:
+                if success:
+                    req.deferred.callback(result)
+                else:
+                    req.deferred.errback(failure.Failure(RatingEngineError(result)))
+            except defer.AlreadyCalledError:
+                log.debug("Request %s was already responded to" % str(req))
         if self._request_queue:
             self._send_next_request()
 
@@ -199,7 +203,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def send_request(self, request):
         if not request.reliable and not self.connected:
             req.deferred.errback(failure.Failure(RatingEngineError("Connection with the Rating Engine is down")))
-            return
+            return request
         self._request_queue.append(request)
         if self.__request is None:
             self._send_next_request()
