@@ -4,6 +4,7 @@ callcontrol (2.0.0) unstable; urgency=low
   * Adapt the application to using the dialog module for sending BYEs
   * Add setting to limit the session time of prepaid calls
   * Change logging output to show destination
+  * Do not lose requests sent to the rating engine
 
   [ Adrian Georgescu ]
   * Added INSTALL and LICENSE files

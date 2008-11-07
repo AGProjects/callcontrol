@@ -191,7 +191,6 @@ class CallControlProtocol(LineOnlyReceiver):
             elif call.timelimit == 0: ## prepaid account with no credit
                 log.info("Call id %s of %s to %s forbidden because credit is too low" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
-                call.end()
                 req.deferred.callback('No credit')
             elif call.timelimit is None: ## no limit for call
                 log.info("Call id %s of %s to %s is postpaid not limited" % (req.callid, call.user, call.ruri))

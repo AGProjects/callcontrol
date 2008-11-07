@@ -262,15 +262,15 @@ class Call(Structure):
                         call.timelimit = self.timelimit
                         call._setup_timer()
 
-    def _start_error(self, fail, deferred):
-        deferred.errback(fail)
+    def _start_error(self, fail):
+        log.info("Could not get call limit for call id %s of %s to %s" % (self.callid, self.user, self.ruri))
 
     def end(self, calltime=None, reason=None, sendbye=False):
         if sendbye and self.dialogid is not None:
             ManagementInterface().end_dialog(self.dialogid)
         if self.timer:
             self.timer.cancel()
-        fullreason = '%s%s' % (self.inprogress and 'terminated' or 'canceled', reason and (' by %s' % reason) or '')
+        fullreason = '%s%s' % (self.inprogress and 'disconnected' or 'canceled', reason and (' by %s' % reason) or '')
         if self.inprogress:
             self.endtime = time.time()
             duration = self.endtime - self.starttime
@@ -289,7 +289,7 @@ class Call(Structure):
         if self.prepaid and not self.locked:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
             rating = RatingEngineConnections.getConnection(self)
-            rating.debitBalance(self).addCallbacks(callback=self._end_finish, callbackArgs=[reason and fullreason or None])
+            rating.debitBalance(self).addCallbacks(callback=self._end_finish, errback=self._end_error, callbackArgs=[reason and fullreason or None])
         elif reason is not None:
             log.info("Call id %s of %s to %s %s%s" % (self.callid, self.user, self.ruri, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
         self.timer = None
@@ -317,7 +317,10 @@ class Call(Structure):
         if self.duration > 0:
             log.info("Call id %s of %s to %s %s after %d seconds, call price is %s" % (self.callid, self.user, self.ruri, reason, self.duration, value))
         elif reason is not None:
-            log.info("Call id %s of %s %s" % (self.callid, self.user, reason))
+            log.info("Call id %s of %s to %s %s" % (self.callid, self.user, self.ruri, reason))
+ 
+    def _end_error(self, fail):
+        log.info("Could not debit balance for call id %s of %s to %s" % (self.callid, self.user, self.ruri))
     
     status     = property(lambda self: self.inprogress and 'in-progress' or 'pending')
     complete   = property(lambda self: self.dialogid is not None)

@@ -91,8 +91,8 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def __init__(self):
         self.connected = False
         self.__request = None
-        self.__request_queue = deque()
         self.__timeout_call = None
+        self._request_queue = deque()
     
     def connectionMade(self):
         log.info("Connected to Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
@@ -103,7 +103,9 @@ class RatingEngineProtocol(LineOnlyReceiver):
         log.info("Disconnected from Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = False
         if self.__request:
-            self._respond("Connection with the Rating Engine is down: %s" % reason, success=False)
+            self._request_queue.appendleft(self.__request)
+            self.__request = None
+        self.factory.application.connectionLost(self.transport.connector, reason, self)
 
     def timeoutConnection(self):
         log.info("Connection to Rating Engine at %s:%d timedout" % (self.transport.getPeer().host, self.transport.getPeer().port))
@@ -150,9 +152,11 @@ class RatingEngineProtocol(LineOnlyReceiver):
         result = lines[0].strip().capitalize()
         if result not in valid_answers:
             log.error("Invalid reply from rating engine: `%s'" % result)
-            log.warn("Rating engine possible failed query: %s" % cmd)
+            log.warn("Rating engine possible failed query: %s" % self.__request)
+            raise RatingEngineError('Invalid rating engine response')
         elif result == 'Failed':
-            log.warn("Rating engine failed query: %s" % cmd)
+            log.warn("Rating engine failed query: %s" % self.__request)
+            raise RatingEngineError('Rating engine failed query')
         try:
             timelimit = int(lines[1].split('=', 1)[1].strip())
         except:
@@ -163,13 +167,14 @@ class RatingEngineProtocol(LineOnlyReceiver):
 
 
     def _send_next_request(self):
-        self.__request = self.__request_queue.popleft()
+        self.__request = self._request_queue.popleft()
         if self.connected:
             self.sendLine(self.__request)
             self._set_timeout()
 #            log.debug("Sent request to rating engine: %s" % self.__request) #DEBUG
         else:
-            self._respond('Connection with the Rating Engine is down', success=False)
+            self._request_queue.appendleft(self.__request)
+            self._request = None
 
     def _respond(self, result, success=True):
         req = self.__request
@@ -178,7 +183,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
             req.deferred.callback(result)
         else:
             req.deferred.errback(failure.Failure(RatingEngineError(result)))
-        if self.__request_queue:
+        if self._request_queue:
             self._send_next_request()
 
     def _set_timeout(self, timeout=None):
@@ -187,7 +192,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
         self.__timeout_call = reactor.callLater(timeout/1000.0, self.timeoutConnection)
 
     def send_request(self, request):
-        self.__request_queue.append(request)
+        self._request_queue.append(request)
         if self.__request is None:
             self._send_next_request()
         return request
@@ -217,7 +222,6 @@ class RatingEngineFactory(ReconnectingClientFactory):
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
     def clientConnectionLost(self, connector, reason):
-        self.application.connectionLost(connector, reason)
         if self.application.disconnecting:
             return
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
@@ -229,6 +233,7 @@ class RatingEngine(object):
         self.disconnecting = False
         self.connector = reactor.connectTCP(self.address[0], self.address[1], factory=RatingEngineFactory(self))
         self.connection = None
+        self.__unsent_req = deque()
 
     def shutdown(self):
         self.disconnecting = True
@@ -236,26 +241,36 @@ class RatingEngine(object):
 
     def connectionMade(self, connector):
         self.connection = connector.transport
+        while self.__unsent_req:
+            req = self.__unsent_req.popleft()
+            self.connection.protocol.send_request(req)
 
-    def connectionLost(self, connector, reason):
+    def connectionLost(self, connector, reason, protocol):
+        self.__unsent_req.extendleft(reversed(protocol._request_queue))
         self.connection = None
     
-    def getCallLimit(self, call):
+    def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit):
+        if max_duration is None:
+            max_duration = 36000
+        args = {}
+        if call.inprogress:
+            args['State'] = 'Connected'
+        req = RatingRequest('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
+                          Gateway=call.sourceip, Duration=max_duration, Lock=1, **args)
         if self.connection is not None:
-            args = {}
-            if call.inprogress:
-                args['State'] = 'Connected'
-            req = RatingRequest('MaxSessionTime', CallId=call.callid, From=call.billingParty, To=call.ruri,
-                          Gateway=call.sourceip, Duration=36000, Lock=1, **args)
             return self.connection.protocol.send_request(req).deferred
-        return defer.fail(failure.Failure(RatingEngineError('Connection with Rating Engine is down')))
+        else:
+            self.__unsent_req.append(req)
+            return req.deferred
     
     def debitBalance(self, call):
+        req = RatingRequest('DebitBalance', CallId=call.callid, From=call.billingParty, To=call.ruri,
+                      Gateway=call.sourceip, Duration=call.duration)
         if self.connection is not None:
-            req = RatingRequest('DebitBalance', CallId=call.callid, From=call.billingParty, To=call.ruri,
-                          Gateway=call.sourceip, Duration=call.duration)
             return self.connection.protocol.send_request(req).deferred
-        return defer.fail(failure.Failure(RatingEngineError('Connection with Rating Engine is down')))
+        else:
+            self.__unsent_req.append(req)
+            return req.deferred
 
 
 class RatingEngineConnections(object):
