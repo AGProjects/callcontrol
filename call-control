@@ -15,7 +15,6 @@ def debug(method, **kwargs):
     sock.sendall('debug\r\nshow: %s\r\n' % method + '\r\n'.join(['%s: %s' % (key, value) for key, value in kwargs.items()]) + '\r\n\r\n')
     response = ''
     while True:
-        select.select([sock], [], [])[0]
         data = sock.recv(4096)
         response += data
         if not data or data.endswith('\r\n'):
