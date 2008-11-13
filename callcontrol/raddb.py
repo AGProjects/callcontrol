@@ -126,7 +126,7 @@ class RadiusDatabase(object):
                               %(fromTagField)s AS fromtag, %(toTagField)s AS totag
                        FROM   %%(table)s
                        WHERE  %(sessionIdField)s IN %%(ids)s AND
-                              %(mediaInfoField)s LIKE 'timeout%%%%' AND
+                              %(mediaInfoField)s = 'timeout' AND
                               %(stopInfoField)s IS NULL''' % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
                                                                                               'ids': ids}
             rows = self.conn.queryAll(query)

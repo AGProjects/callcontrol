@@ -9,6 +9,7 @@ callcontrol (2.0.0) unstable; urgency=low
   * Fixed bugs related to exceptions getting thrown in connectionLost and RatingEngineProtocol._respond
   * Made debug answer's format consistent: \r\n terminated lines with
     message ending in a blank line
+  * Only check for 'timeout' value in mediaInfo database field
 
   [ Adrian Georgescu ]
   * Added INSTALL and LICENSE files
