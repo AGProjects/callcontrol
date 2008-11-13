@@ -26,9 +26,9 @@ the maxsessions time for all sessions belonging to the same user. For more
 information see chapter 'Simultaneous prepaid sessions' from
 http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
 
-Call Control works also together with MediaProxy >=2.0 to terminate calls
-that have timed-out because the RTP stream(s) have stopped flowing without
-a BYE being received by the SIP Proxy.
+Call Control can also benefit from the MediaProxy >=2.0 session timeout
+feature and terminate the session that have timed-out because the RTP
+streams have stopped flowing without a BYE being received by the SIP Proxy.
 
 
 License
