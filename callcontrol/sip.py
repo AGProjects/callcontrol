@@ -2,10 +2,8 @@
 #
 
 """
- Implementation of a SIP Null client
-
- The SIP Null client will send fake BYE messages and will receive their replies,
-but will ignore them completely.
+Implementation of Call objects used to store call information and manage
+a call.
 """
 
 import time
