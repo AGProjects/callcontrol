@@ -98,12 +98,12 @@ class RadiusDatabase(object):
             if not calls:
                 return {}
             ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
-            table = RadiusDatabaseConfig.table
             query = """SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
                               %(fromTagField)s AS fromtag, %(toTagField)s AS totag
                        FROM   %%(table)s
                        WHERE  %(sessionIdField)s IN %%(ids)s AND
-                              %(stopInfoField)s IS NOT NULL""" % RadiusDatabaseConfig.__dict__ % locals()
+                              %(stopInfoField)s IS NOT NULL""" % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
+                                                                                                  'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
@@ -122,13 +122,13 @@ class RadiusDatabase(object):
             if not calls:
                 return {}
             ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
-            table = RadiusDatabaseConfig.table
             query = '''SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
                               %(fromTagField)s AS fromtag, %(toTagField)s AS totag
                        FROM   %%(table)s
                        WHERE  %(sessionIdField)s IN %%(ids)s AND
                               %(mediaInfoField)s LIKE 'timeout%%%%' AND
-                              %(stopInfoField)s IS NULL''' % RadiusDatabaseConfig.__dict__ % locals()
+                              %(stopInfoField)s IS NULL''' % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
+                                                                                              'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
