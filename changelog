@@ -2,6 +2,13 @@ callcontrol (2.0.0) unstable; urgency=low
 
   [ Lucian Stanescu ]
   * Adapt the application to using the dialog module for sending BYEs
+  * Add setting to limit the session time of prepaid calls
+  * Change logging output to show destination
+  * Do not lose requests sent to the rating engine
+  * Do not retransmit the first MaxSessionTime as this will cause openser to wait
+  * Fixed bugs related to exceptions getting thrown in connectionLost and RatingEngineProtocol._respond
+  * Made debug answer's format consistent: \r\n terminated lines with
+    message ending in a blank line
 
   [ Adrian Georgescu ]
   * Added INSTALL and LICENSE files
