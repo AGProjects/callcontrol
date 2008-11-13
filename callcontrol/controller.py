@@ -224,20 +224,21 @@ class CallControlProtocol(LineOnlyReceiver):
             req.deferred.callback('Ok')
 
     def _CC_debug(self, req):
-        debugstr = ''
+        debuglines = []
         if req.show == 'sessions':
             for callid, call in self.factory.application.calls.items():
                 if not req.user or call.user.startswith(req.user):
-                    debugstr += 'Call id %s of %s to %s: %s\n' % (callid, call.user, call.ruri, call.status)
+                    debuglines.append('Call id %s of %s to %s: %s' % (callid, call.user, call.ruri, call.status))
         elif req.show == 'session':
             try:
                 call = self.factory.application.calls[req.callid]
             except KeyError:
-                debugstr += 'Call id %s does not exist\n' % req.callid
+                debuglines.append('Call id %s does not exist' % req.callid)
             else:
                 for key, value in call.items():
-                    debugstr += '%s: %s\n' % (key, value)
-        req.deferred.callback(debugstr)
+                    debuglines.append('%s: %s' % (key, value))
+        debuglines.append('')
+        req.deferred.callback('\r\n'.join(debuglines))
 
 
 class CallControlFactory(Factory):

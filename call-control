@@ -17,7 +17,7 @@ def debug(method, **kwargs):
     while True:
         data = sock.recv(4096)
         response += data
-        if not data or data.endswith('\r\n'):
+        if not data or data.endswith('\r\n\r\n'):
             break
     sock.close()
     for line in response.splitlines():
