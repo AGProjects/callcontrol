@@ -5,6 +5,7 @@ callcontrol (2.0.0) unstable; urgency=low
 
   [ Adrian Georgescu ]
   * Added INSTALL and LICENSE files
+  * Updated documentation 
 
  -- Adrian Georgescu <ag@ag-projects.com>  Thu, 06 Nov 2008 15:48:29 +0100
 
