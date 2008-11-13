@@ -42,75 +42,7 @@ You must setup the following components:
 
 1. OpenSIPS configuration
 
-Sample configuration file:
-
-loadmodule "call_control.so"
-modparam("call_control", "disable",      0)
-...
-
-route {
-
-   # call_control() function needs to be called only once during the first INVITE
-
-   if ((method=="INVITE" && !has_totag())) {
-        call_control();
-        switch ($retcode) {
-        case 2:
-            # Call with no limit
-        case 1:
-            # Call with a limit under callcontrol management (either prepaid or postpaid)
-            break;
-        case -1:
-            # Not enough credit (prepaid call)
-            xlog("L_INFO", "Call control: not enough credit for prepaid call\n");
-            acc_rad_request("402");
-            if (0 && 1 && !isflagset(6)) {
-                rewriteuri("sip:800301@vm.sipthor.net");
-                resetflag(1);
-                t_on_failure("6");
-            } else {
-                sl_send_reply("402", "Not enough credit");
-                exit;
-            }
-            break;
-        case -2:
-            # Locked by call in progress (prepaid call)
-            xlog("L_INFO", "Call control: prepaid call locked by another call in progress\n");
-            acc_rad_request("403");
-            if (0 && 1 && !isflagset(6)) {
-                rewriteuri("sip:800302@vm.sipthor.net");
-                resetflag(1);
-                t_on_failure("6");
-            } else {
-                sl_send_reply("403", "Call locked by another call in progress");
-                exit;
-            }
-            break;
-        case -3:
-            # No provider (prepaid call)
-            xlog("L_INFO", "Call control: cannot find prepaid engine for domain $avp(billing_party_domain)\n");
-        default:
-            # Internal error (message parsing, communication, ...)
-            if (isflagset(17)) {
-                xlog("L_INFO", "Call control: internal server error\n");
-                acc_rad_request("500");
-                if (0 && 1 && !isflagset(6)) {
-                    rewriteuri("sip:800399@vm.sipthor.net");
-                    resetflag(1);
-                    t_on_failure("6");
-                } else {
-                    sl_send_reply("500", "Internal server error");
-                    exit;
-                }
-            } else {
-                xlog("L_WARN", "Call control: cannot set time limit for postpaid call\n");
-            }
-        }
-    }
-
-
-    ....
-}
+See the documentation that comes with the OpenSIPS callcontrol module. 
 
 
 2. Call Control configuration (this application)
