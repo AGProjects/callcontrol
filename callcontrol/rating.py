@@ -163,13 +163,15 @@ class RatingEngineProtocol(LineOnlyReceiver):
         elif result == 'Failed':
             log.warn("Rating engine failed query: %s" % self.__request)
             raise RatingEngineError('Rating engine failed query')
-        try:
-            timelimit = int(lines[1].split('=', 1)[1].strip())
-        except:
-            log.error("Invalid reply from rating engine for DebitBalance on line 2: `%s'" % lines[1])
-            timelimit = None
-        totalcost = lines[2].strip()
-        return timelimit, totalcost
+        else:
+            try:
+                timelimit = int(lines[1].split('=', 1)[1].strip())
+                totalcost = lines[2].strip()
+            except:
+                log.error("Invalid reply from rating engine for DebitBalance on line 2: `%s'" % lines[1])
+                timelimit = None
+                return timelimit, totalcost
+        return 0, 0
 
 
     def _send_next_request(self):
