@@ -1,4 +1,4 @@
-callcontrol (2.0.0) unstable; urgency=low
+callcontrol (2.0.0~rc1) experimental; urgency=low
 
   [ Lucian Stanescu ]
   * Adapt the application to using the dialog module for sending BYEs
@@ -15,7 +15,7 @@ callcontrol (2.0.0) unstable; urgency=low
   * Added INSTALL and LICENSE files
   * Updated documentation 
 
- -- Adrian Georgescu <ag@ag-projects.com>  Thu, 06 Nov 2008 15:48:29 +0100
+ -- Lucian Stanescu <luci@ag-projects.com>  Thu, 06 Nov 2008 15:48:29 +0100
 
 callcontrol (1.5.2) unstable; urgency=low
 
