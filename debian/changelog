@@ -1,4 +1,4 @@
-callcontrol (2.0.0~rc1) experimental; urgency=low
+callcontrol (2.0.0) unstable; urgency=low
 
   [ Lucian Stanescu ]
   * Adapt the application to using the dialog module for sending BYEs
