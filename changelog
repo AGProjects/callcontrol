@@ -1,3 +1,9 @@
+callcontrol (2.0.1) unstable; urgency=low
+
+  * Set supported python version to minimum 2.4
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Sat, 13 Dec 2008 16:51:28 +0000
+
 callcontrol (2.0.0) unstable; urgency=low
 
   [ Lucian Stanescu ]
