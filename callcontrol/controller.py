@@ -237,8 +237,7 @@ class CallControlProtocol(LineOnlyReceiver):
             else:
                 for key, value in call.items():
                     debuglines.append('%s: %s' % (key, value))
-        debuglines.append('')
-        req.deferred.callback('\r\n'.join(debuglines))
+        req.deferred.callback('\r\n'.join(debuglines)+'\r\n')
 
 
 class CallControlFactory(Factory):

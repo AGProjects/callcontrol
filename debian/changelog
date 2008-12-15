@@ -1,6 +1,7 @@
 callcontrol (2.0.1) unstable; urgency=low
 
   * Set supported python version to minimum 2.4
+  * Fixed result from debug command when there is no output
 
  -- Lucian Stanescu <luci@ag-projects.com>  Sat, 13 Dec 2008 16:51:28 +0000
 
