@@ -168,10 +168,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 timelimit = int(lines[1].split('=', 1)[1].strip())
                 totalcost = lines[2].strip()
             except:
-                log.error("Invalid reply from rating engine for DebitBalance on line 2: `%s'" % lines[1])
+                log.error("Invalid reply from rating engine for DebitBalance on lines 2, 3: `%s'" % ("', `".join(lines[1:3])))
                 timelimit = None
-                return timelimit, totalcost
-        return 0, 0
+                totalcost = 0
+            return timelimit, totalcost
 
 
     def _send_next_request(self):
