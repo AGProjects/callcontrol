@@ -3,29 +3,24 @@ Description
 -----------
 
 Call Control is a prepaid application that can be used together with
-OpenSIPS callcontrol module and CDRTool rating engine to limit the duration
-of SIP sessions based on a prepaid balance.
+OpenSIPS call_control module and CDRTool rating engine to limit the duration
+of SIP sessions based on a prepaid balance. It can also be used to limit the
+duration of any session to a predefined maximum value without debiting a
+balance.
 
-It achieves this by maintaining a timer for each session and sending BYE
-messages to both SIP end-points, if the session exceeds its maximum session
-limit or if the Call Control receives a command to forcefully close the call
-from outside. It will however not send these BYE messages if the call is
-normally terminated by either party involved in the conversation, before the
-call maximum allowed time is exceeded.
+Call Control achieves this by maintaining a timer for each session and
+sending BYE messages to both SIP end-points, if the session exceeds its
+maximum session limit or if the Call Control receives a command to
+forcefully close the call from outside.
 
-The software is able to handle parallel sessions for prepaid users. 
 
-The modus operandi is based on a simple model: all prepaid sessions
-belonging to the same SIP account must end at the same moment regadless of
-the called destinations and their different prices. Whenever CDRTool rating
-engine provides the MaxSessionTime for a new call setup, call control engine
-adjust the maxsessions time for all sessions belonging to the same user. For
-more information see chapter 'Simultaneous prepaid sessions' from
-http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
+Features
+--------
 
-Call Control also benefits of MediaProxy >=2.0 session timeout feature that
-terminates the session that have timed-out because the RTP streams have
-stopped flowing without a BYE being received by the SIP Proxy.
+- Parallel sessions using one balance per subscriber
+- Support for sessions that have timeout without BYE
+- Support for sessions that have timeout for media
+- Overview of ongoing sessions and detail about each session
 
 
 License
@@ -47,6 +42,9 @@ The API between call control and the rating engine is described in the CDRTool
 documentation available at:
 
 http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
+
+Overview of ongoing sessions, generation of prepaid cards and prepaid
+accounts can be managed from CDRTool rating tables web interface.
 
 
 Free support
