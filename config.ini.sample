@@ -24,13 +24,6 @@
 ;          exactly that: 0 seconds, not diabled. Use None for disabled.
 ;          Default value: None 
 ;
-; timeout_detection  Whether or not to use the Radius database to find out
-;                    the terminated calls. If set to True, then the
-;                    configuration section RadiusDatabase applies for making
-;                    the database connection. This is only needed if
-;                    MediaProxy does not use OpenSIPS' dialog module to
-;                    terminate a call that has timed out.
-;
 ; timeout_detection  The mechanism used to find out about timed out calls. If
 ;                    set to `radius', it will consider the section
 ;                    RadiusDatabase in order to make a connection to the radius
