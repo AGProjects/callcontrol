@@ -20,9 +20,11 @@ Features
  * Parallel sessions using one balance per subscriber
  * Support for sessions that have timeout without BYE
  * Support for sessions that have timeout for media (using MediaProxy)
- * Overview of ongoing sessions and details about each session
+ * Manual session stop from server terminal
+ * Overview of ongoing sessions in the web page or server terminal
  * Graceful restart without loosing track of sessions 
  * Detailed logging of all performed actions using syslog
+ * Web page provisioning for prepaid accounts (using CDRTool)
 
 
 License
