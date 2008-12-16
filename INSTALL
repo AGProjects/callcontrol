@@ -51,12 +51,38 @@ modparam("call_control", "disable", 0)
 
 route {
 ...
-    # you need to call this function at the first INVITE
-    # everything else is automatic
     if ((method=="INVITE" && !has_totag())) {
+       # you need to call this function at the first INVITE
         call_control();
+        switch ($retcode) {
+        case 2:
+            # Call with no limit
+        case 1:
+            # Call with a limit under callcontrol management (either prepaid
+            # or postpaid)
+            break;
+        case -1:
+            # Not enough credit (prepaid call)
+            xlog("L_INFO", "Call control: not enough credit for prepaid call\n");
+            acc_rad_request("402");
+            sl_send_reply("402", "Not enough credit");
+            exit;
+            break;
+        case -2:
+            # Locked by call in progress (prepaid call)
+            xlog("L_INFO", "Call control: prepaid call locked by another call in progress\n");
+            acc_rad_request("403");
+            sl_send_reply("403", "Call locked by another call in progress");
+            exit;
+            break;
+        default:
+            # Internal error (message parsing, communication, ...)
+            xlog("L_INFO", "Call control: internal server error\n");
+            acc_rad_request("500");
+            sl_send_reply("500", "Internal server error");
+            exit;
+        }
     }
-
 ...
 }
 
