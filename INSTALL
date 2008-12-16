@@ -77,7 +77,8 @@ timeout_detection=dialog
 address = cdrtool.hostname:9024
 
 [RadiusDatabase]
-; connection to Radius database if timeout_detection=radius
+; connection to Radius database if timeout_detection=radius, you must enable
+; MediaProxy Radius accounting for this to work
 ; user = radius
 ; password = password
 ; host = db

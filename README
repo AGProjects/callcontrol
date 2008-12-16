@@ -19,7 +19,7 @@ Features
 
  * Parallel sessions using one balance per subscriber
  * Support for sessions that have timeout without BYE
- * Support for sessions that have timeout for media
+ * Support for sessions that have timeout for media (using MediaProxy)
  * Overview of ongoing sessions and details about each session
  * Graceful restart without loosing track of sessions 
  * Detailed logging of all performed actions using syslog
