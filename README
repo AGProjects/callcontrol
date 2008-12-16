@@ -44,32 +44,10 @@ License
 For licensing information please read the LICENSE file.
 
 
-Download and installation
--------------------------
+Installation
+------------
 
 See INSTALL file.
-
-
-Prepaid Engine API
-------------------
-
-The API between call control and the rating engine is described in the CDRTool
-documentation available at:
-
-http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
-
-Overview of ongoing sessions, generation of prepaid cards and prepaid
-accounts can be managed from CDRTool rating tables web interface.
-
-
-Monitoring active sessions and terminating a session
-----------------------------------------------------
-
-Use the following commands:
-
-/etc/init.d/callcontrol sessions
-/etc/init.d/callcontrol session id
-/etc/init.d/callcontrol terminate id
 
 
 Free support
