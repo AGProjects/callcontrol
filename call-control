@@ -5,25 +5,6 @@
 
 """Implementation of a call controller for OpenSIPS."""
 
-def debug(method, **kwargs):
-    import socket
-    import select
-
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect('%s/socket' % process.runtime_directory)
-
-    sock.sendall('debug\r\nshow: %s\r\n' % method + '\r\n'.join(['%s: %s' % (key, value) for key, value in kwargs.items()]) + '\r\n\r\n')
-    response = ''
-    while True:
-        data = sock.recv(4096)
-        response += data
-        if not data or data.endswith('\r\n\r\n'):
-            break
-    sock.close()
-    for line in response.splitlines():
-        if line:
-            print line
-
 def send_command(command, **kwargs):
     import socket
     import select
@@ -88,8 +69,11 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if options.debug:
+        if options.debug == '':
+            print >>sys.stderr, 'Must specify debug option'
+            sys.exit(1)
         try:
-            debug(options.debug, **dict([arg.split('=',1) for arg in args if arg.find('=') >= 0]))
+            send_command('debug', show=options.debug, **dict([arg.split('=',1) for arg in args if arg.find('=') >= 0]))
         except Exception, e:
             print >>sys.stderr, 'Error while debugging: %s' % e
             sys.exit(1)
