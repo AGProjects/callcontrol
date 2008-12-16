@@ -254,6 +254,16 @@ class CallControlProtocol(LineOnlyReceiver):
                     debuglines.append('%s: %s' % (key, value))
         req.deferred.callback('\r\n'.join(debuglines)+'\r\n')
 
+    def _CC_terminate(self, req):
+        try:
+            call = self.factory.application.calls[req.callid]
+        except KeyError:
+            req.deferred.callback('Call id %s does not exist\r\n' % req.callid)
+        else:
+            self.factory.application.clean_call(req.callid)
+            call.end(reason='admin', sendbye=True)
+            req.deferred.callback('Ok\r\n')
+
 
 class CallControlFactory(Factory):
     protocol = CallControlProtocol
@@ -444,10 +454,11 @@ class CallControlServer(object):
 
 class Request(object):
     """A request parsed into a structure based on request type"""
-    __methods = {'init':   ('callid', 'diverter', 'ruri', 'sourceip', 'from'),
-                 'start':  ('callid', 'dialogid'),
-                 'stop':   ('callid',),
-                 'debug':  ('show',)}
+    __methods = {'init':      ('callid', 'diverter', 'ruri', 'sourceip', 'from'),
+                 'start':     ('callid', 'dialogid'),
+                 'stop':      ('callid',),
+                 'debug':     ('show',),
+                 'terminate': ('callid',)}
     def __init__(self, cmd, params):
         if cmd not in self.__methods.keys():
             raise InvalidRequestError("Unknown request: %s" % cmd)
@@ -497,6 +508,8 @@ class Request(object):
             return "%(cmd)s: callid=%(callid)s" % self.__dict__
         elif self.cmd == 'debug':
             return "%(cmd)s: show=%(show)s" % self.__dict__
+        elif self.cmd == 'terminate':
+            return "%(cmd)s: callid=%(callid)s" % self.__dict__
         else:
             return object.__str__(self)
 

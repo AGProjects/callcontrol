@@ -47,6 +47,9 @@ case "$1" in
   session)
     $DAEMON "--debug=session" "callid=$2"
     ;;
+  terminate)
+    $DAEMON "--terminate=$2"
+    ;;
   *)
 	N=/etc/init.d/$NAME
 	echo "Usage: $N {start|stop|restart|force-reload|sessions|session}" >&2
