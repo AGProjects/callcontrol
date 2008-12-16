@@ -2,23 +2,25 @@
 Description
 -----------
 
-Call Control is an application that can be used together with OpenSIPS
-callcontrol module and CDRTool rating engine to limit the duration of SIP
-sessions based on a prepaid balance. 
+Call Control is a prepaid application that can be used together with
+OpenSIPS callcontrol module and CDRTool rating engine to limit the duration
+of SIP sessions based on a prepaid balance.
 
-It does this by sending BYE messages to both SIP end -points, if the session
-exceeds its maximum session limit or if Call Control receives a command to
-forcefully close the call from outside. It will however not send these fake
-BYE messages if the call is normally terminated by either party involved in
-the conversation, before the call maximum allowed time is exceeded.
+It achieves this by maintaining a timer for each session and sending BYE
+messages to both SIP end-points, if the session exceeds its maximum session
+limit or if the Call Control receives a command to forcefully close the call
+from outside. It will however not send these BYE messages if the call is
+normally terminated by either party involved in the conversation, before the
+call maximum allowed time is exceeded.
 
-The software is able to handle parallel sessions for prepaid users. The
-modus operandi is based on a simple model: all prepaid sessions belonging to
-the same SIP account must end at the same moment regadless of the called
-destinations and their different prices. Whenever CDRTool rating engine
-provides the MaxSessionTime for a new call setup, call control engine adjust
-the maxsessions time for all sessions belonging to the same user. For more
-information see chapter 'Simultaneous prepaid sessions' from
+The software is able to handle parallel sessions for prepaid users. 
+
+The modus operandi is based on a simple model: all prepaid sessions
+belonging to the same SIP account must end at the same moment regadless of
+the called destinations and their different prices. Whenever CDRTool rating
+engine provides the MaxSessionTime for a new call setup, call control engine
+adjust the maxsessions time for all sessions belonging to the same user. For
+more information see chapter 'Simultaneous prepaid sessions' from
 http://download.ag-projects.com/CDRTool/doc/PREPAID.txt
 
 Call Control also benefits of MediaProxy >=2.0 session timeout feature that
@@ -32,13 +34,10 @@ License
 For licensing information please read the LICENSE file.
 
 
-Installation
-------------
+Download and installation
+-------------------------
 
-The application requires callcontrol module available in OpenSIPS >=1.5 and
-CDRTool >= 6.7.0.
-
-For more information please consult the INSTALL file.
+See INSTALL file.
 
 
 Prepaid Engine API

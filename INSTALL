@@ -2,6 +2,10 @@
 Installation
 ------------
 
+The software is available as a tar archive at:
+
+http://download.ag-projects.com/CallControl/
+
 For Debian testing or unstable there is an official public repository
 provided by AG Projects. Install the AG Projects debian software signing
 key:
@@ -42,7 +46,22 @@ You must setup the following components:
 
 1. OpenSIPS configuration
 
-See the documentation that comes with the OpenSIPS callcontrol module. 
+loadmodule "call_control.so"
+modparam("call_control", "disable", 0)
+
+route {
+...
+    # you need to call this function at the first INVITE
+    # everything else is automatic
+    if ((method=="INVITE" && !has_totag())) {
+        call_control();
+    }
+
+...
+}
+
+For more information see the documentation that comes with the OpenSIPS
+callcontrol module.
 
 
 2. Call Control configuration (this application)
@@ -50,12 +69,32 @@ See the documentation that comes with the OpenSIPS callcontrol module.
 The application is searching for its configuration file config.ini in its current
 directory and in /etc/callcontrol/config.ini
 
-A sample configuration file is available in config.ini.sample.
+; detect sessions that have media timeout without BYE
+timeout_detection=dialog
+
+[CDRTool]
+; connection to cdrtool rating engine for MaxSessionTime() and DebitBalance()
+address = cdrtool.hostname:9024
+
+[RadiusDatabase]
+; connection to Radius database if timeout_detection=radius
+; user = radius
+; password = password
+; host = db
+; database = radius
+; table = radacct%Y%m
+
+[OpenSIPS]
+; connection to OpenSIPS call_control module
+; socket_path = /var/run/opensips/socket
+; max_connections = 10
+
+A more detailed sample configuration file is available in config.ini.sample.
 
 
 3. CDRTool rating engine
 
-See the PREPAID.txt  documentation that comes together with CDRTool.
+Please see the documentation of CDRTool project to setup the rating engine.
 
 
 Logging
