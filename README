@@ -17,10 +17,12 @@ forcefully close the call from outside.
 Features
 --------
 
-- Parallel sessions using one balance per subscriber
-- Support for sessions that have timeout without BYE
-- Support for sessions that have timeout for media
-- Overview of ongoing sessions and detail about each session
+ * Parallel sessions using one balance per subscriber
+ * Support for sessions that have timeout without BYE
+ * Support for sessions that have timeout for media
+ * Overview of ongoing sessions and details about each session
+ * Graceful restart without loosing track of sessions 
+ * Detailed logging of all performed actions using syslog
 
 
 License
