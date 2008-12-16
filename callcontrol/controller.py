@@ -39,14 +39,29 @@ class TimeLimit(int):
             raise ValueError("invalid time limit value: %r. should be positive." % value)
         return limit
 
+class TimeoutDetection(str):
+    _values = ('dialog', 'radius')
+    def __init__(self, value):
+        value = value.lower()
+        if value not in self._values:
+            raise ValueError("invalid timeout detection value: %r" % value)
+        if value == 'radius':
+            self.use_radius = True
+        else:
+            self.use_radius = False
+
+    def __new__(cls, value):
+        return str.__new__(cls, value.lower())
+
 class CallControlConfig(ConfigSection):
-    _datatypes = {'limit': TimeLimit}
-    socket        = "%s/socket" % process.runtime_directory
-    group         = 'opensips'
-    limit         = None
-    timeout       = 24*60*60 ## timeout calls that are stale for more than 24 hours.
-    setupTime     = 90       ## timeout calls that take more than 1'30" to setup.
-    checkInterval = 60       ## check for staled calls and calls that did timeout at every minute.
+    _datatypes = {'limit': TimeLimit, 'timeout_detection': TimeoutDetection}
+    socket            = "%s/socket" % process.runtime_directory
+    group             = 'opensips'
+    limit             = None
+    timeout           = 24*60*60 ## timeout calls that are stale for more than 24 hours.
+    setupTime         = 90       ## timeout calls that take more than 1'30" to setup.
+    checkInterval     = 60       ## check for staled calls and calls that did timeout at every minute.
+    timeout_detection = TimeoutDetection('dialog') ## whether or not to use the radius database to find out terminated calls
 
 config_file = ConfigFile(configuration_filename)
 config_file.read_settings('CallControl', CallControlConfig)
@@ -259,7 +274,10 @@ class CallControlServer(object):
         self.listening = None
         self.engines = None
         self.monitor = None
-        self.db = RadiusDatabase()
+        if CallControlConfig.timeout_detection.use_radius:
+            self.db = RadiusDatabase()
+        else:
+            self.db = None
         
         self.calls = {}
         self.users = {}
@@ -310,8 +328,9 @@ class CallControlServer(object):
             log.warn("Couldn't set access rights for %s" % self.path)
             log.warn("SER may not be able to communicate with us!")
 
-        ## Then setup the CallsMonitor
-        self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
+        ## Then setup the CallsMonitor if we need to use the radius database
+        if CallControlConfig.timeout_detection.use_radius:
+            self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
         ## Open the connection to the rating engines
         self.engines = RatingEngineConnections()
 
@@ -322,7 +341,8 @@ class CallControlServer(object):
             self.engines.shutdown()
         if self.monitor is not None:
             self.monitor.shutdown()
-        self.db.close()
+        if self.db is not None:
+            self.db.close()
         self._save_calls()
     
     def _save_calls(self):

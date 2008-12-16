@@ -2,6 +2,7 @@ callcontrol (2.0.1) unstable; urgency=low
 
   * Set supported python version to minimum 2.4
   * Fixed result from debug command when there is no output
+  * Added option for not using the radius database to detect timedout sessions
 
  -- Lucian Stanescu <luci@ag-projects.com>  Sat, 13 Dec 2008 16:51:28 +0000
 
