@@ -17,12 +17,22 @@
 ;          Default value: opensips
 ;
 ; limit    Limit call duration to this value (in seconds) for all calls.
-;          Prepaid calls will not use this value, they will have the time
-;          limit calculated based on their credit.
+;          Prepaid calls will not use this value, if prepaid_limit is set.
 ;          The value should be the number of seconds of the desired limit
 ;          for the call duration or None for no limit. Warning: 0 means
 ;          exactly that: 0 seconds, not diabled. Use None for disabled.
 ;          Default value: None 
+;
+; prepaid_limit Limit call duration of prepaid calls to this value. If this
+;               option is not set, then the global limit option applies. If
+;               this is not set either, the maximum duration of prepaid calls
+;               is set to 10h. If the limit calculated based on the credit
+;               value is smaller, then this will apply rather than the setting
+;               determined above.
+;               The value should be the number of seconds of the desired limit
+;               for the call duration or None for no limit. Warning: 0 means
+;               exactly that: 0 seconds, not diabled. Use None for disabled.
+;               Default value: None 
 ;
 ; timeout_detection  The mechanism used to find out about timed out calls. If
 ;                    set to `radius', it will consider the section
@@ -34,6 +44,7 @@
 ;socket            = /var/run/callcontrol/socket
 ;group             = opensips
 ;limit             = None
+;prepaid_limit     = None
 ;timeout_detection = dialog
 
 [CDRTool]

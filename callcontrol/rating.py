@@ -54,8 +54,9 @@ class RatingConfig(ConfigSection):
     timeout = 500
 
 class CallControlConfig(ConfigSection):
-    _datatypes = {'prepaid_limit': TimeLimit}
+    _datatypes = {'limit': TimeLimit, 'prepaid_limit': TimeLimit}
     prepaid_limit = None
+    limit = None
 
 ## We use this to overwrite some of the settings above on a local basis if needed
 config_file = ConfigFile(configuration_filename)
@@ -272,8 +273,7 @@ class RatingEngine(object):
         self.connection = None
     
     def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit, reliable=True):
-        if max_duration is None:
-            max_duration = 36000
+        max_duration = max_duration or CallControlConfig.limit or 36000
         args = {}
         if call.inprogress:
             args['State'] = 'Connected'
