@@ -9,7 +9,7 @@ callcontrol (2.0.2) unstable; urgency=low
   * Added help about control commands
   * Added help for init.d script about terminating a session
 
- -- Adrian Georgescu <ag@ag-projects.com>  Wed, 17 Dec 2008 11:04:08 +0100
+ -- Lucian Stanescu <luci@ag-projects.com>  Tue, 16 Dec 2008 15:37:14 +0000
 
 callcontrol (2.0.1) unstable; urgency=low
 
