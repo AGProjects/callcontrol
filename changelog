@@ -1,6 +1,13 @@
 callcontrol (2.0.2) unstable; urgency=low
 
+  [ Lucian Stanescu ]
   * Fixed error handling in response from rating engine
+
+  [ Adrian Georgescu ]
+  * Update install documentation and sample opensips configuration
+  * Added authors and home page
+  * Added help about control commands
+  * Added help for init.d script about terminating a session
 
  -- Lucian Stanescu <luci@ag-projects.com>  Tue, 16 Dec 2008 15:37:14 +0000
 
