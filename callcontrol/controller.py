@@ -174,12 +174,12 @@ class CallControlProtocol(LineOnlyReceiver):
             call = self.factory.application.calls[req.callid]
         except KeyError:
             call = Call(req, self.factory.application)
-            if call.provider is None:
-                req.deferred.callback('No provider')
-                return
             if call.callid in self.factory.application.users.get(call.billingParty, ()):
                 log.error("Call id %s of %s to %s exists in users table but not in calls table" % (call.callid, call.user, call.ruri))
                 req.deferred.callback('Locked')
+                return
+            if call.billingParty is None:
+                req.deferred.callback('Error')
                 return
             self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
             self.factory.application.calls[req.callid] = call

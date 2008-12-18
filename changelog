@@ -2,6 +2,7 @@ callcontrol (2.0.3) unstable; urgency=low
 
   * Fixed call restore when radius database is not in use
   * Made prepaid_limit default to limit option rather than None.
+  * Removed provider determination code
 
  -- Lucian Stanescu <luci@ag-projects.com>  Wed, 17 Dec 2008 15:28:47 +0000
 

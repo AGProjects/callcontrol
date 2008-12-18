@@ -124,25 +124,19 @@ class Call(Structure):
             self.billingParty = 'sip:%s' % self.diverter
             self.user = self.diverter
         else:
-            match = re.search(r'(?P<address>sip:(?P<user>[^@]+@[^\s:;>]+))', request.from_)
+            match = re.search(r'(?P<address>sip:(?P<user>([^@]+@)?[^\s:;>]+))', request.from_)
             if match is not None:
                 self.billingParty = match.groupdict()['address']
                 self.user = match.groupdict()['user']
             else:
-                self.billingParty = 'unknown'
-                self.user = 'unknown'
-        ## Determine which provider will handle the call
-        match = re.search(r'sip:[^@]+@(?P<hostname>.*)', self.billingParty)
-        if match is not None:
-            self.provider = match.groupdict()['hostname']
-        else:
-            self.provider = None
+                self.billingParty = None
+                self.user = None
         self.__initialized = False
         self.application = application
 
     def __str__(self):
         return ("callid=%(callid)s from=%(from)s ruri=%(ruri)s "
-                "diverter=%(diverter)s sourceip=%(sourceip)s provider=%(provider)s "
+                "diverter=%(diverter)s sourceip=%(sourceip)s "
                 "timelimit=%(timelimit)s status=%%s" % self % self.status)
     
     def __expire(self):
