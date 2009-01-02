@@ -2,10 +2,6 @@
 Installation
 ------------
 
-The software is available as a tar archive at:
-
-http://download.ag-projects.com/CallControl/
-
 For Debian testing or unstable there is an official public repository
 provided by AG Projects. Install the AG Projects debian software signing
 key:
@@ -29,6 +25,29 @@ For non Debian installations, you must install the following dependencies:
 python-application (>= 1.0.9)
 python-twisted-core
 python-sqlobject
+
+Call Control software is available as a tar archive at:
+
+http://download.ag-projects.com/CallControl/
+
+Extract it using tar xzvf callcontrol-version.tar.gz and change directory to
+the newly created callcontrol directory.
+
+The source code is managed using darcs version control tool. The darcs
+repository can be fetched with:
+
+darcs get http://devel.ag-projects.com/repositories/callcontrol
+
+To obtain the incremental changes after the initial get:
+
+cd callcontrol
+darcs pull -a
+
+Install the software:
+
+cd callcontrol
+python setup.py install
+
 
 You may run the software from its own directory or install it in a directory
 anywhere in the system.
