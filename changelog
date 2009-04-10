@@ -1,3 +1,13 @@
+callcontrol (2.0.4) unstable; urgency=low
+
+  * Removed postinst script since cdbs executes dh programs in correct order
+  * Removed deprecated python-application attributes in configuration types
+  * Fixed debian package to not create /var/run/callcontrol
+  * Fixed debian/copyright to point to GPLv2
+  * Bumped Standards-Version to 3.8.1
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Fri, 10 Apr 2009 13:20:25 +0300
+
 callcontrol (2.0.3) unstable; urgency=low
 
   * Fixed call restore when radius database is not in use
