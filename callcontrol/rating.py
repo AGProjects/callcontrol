@@ -26,8 +26,8 @@ from callcontrol import configuration_filename
 ## Rating engine configuration
 ##
 class RatingEngineAddress(EndpointAddress):
-    _defaultPort = 9024
-    _name = 'rating engine address'
+    default_port = 9024
+    name = 'rating engine address'
 
 class RatingEngineAddresses(list):
     def __new__(cls, engines):
