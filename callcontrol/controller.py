@@ -54,7 +54,7 @@ class TimeoutDetection(str):
         return str.__new__(cls, value.lower())
 
 class CallControlConfig(ConfigSection):
-    _datatypes = {'limit': TimeLimit, 'timeout_detection': TimeoutDetection}
+    _datatypes = {'limit': TimeLimit}
     socket            = "%s/socket" % process.runtime_directory
     group             = 'opensips'
     limit             = None
