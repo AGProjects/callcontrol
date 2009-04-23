@@ -278,7 +278,7 @@ class RatingEngine(object):
         if call.inprogress:
             args['State'] = 'Connected'
         req = RatingRequest('MaxSessionTime', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
-                          Gateway=call.sourceip, Duration=max_duration, Lock=1, **args)
+                          Gateway=call.sourceip, Duration=max_duration, **args)
         if self.connection is not None:
             return self.connection.protocol.send_request(req).deferred
         else:
