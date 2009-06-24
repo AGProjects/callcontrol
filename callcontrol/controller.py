@@ -409,7 +409,7 @@ class CallControlServer(object):
                         terminated = self.db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))   ## calls terminated by caller/called
                         didtimeout = self.db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))     ## calls closed by mediaproxy after a media timeout
                     else:
-                        termianted = {}
+                        terminated = {}
                         didtimeout = {}
                 except RadiusDatabaseError, e:
                     log.error("Could not query database: %s" % e)
