@@ -4,9 +4,13 @@ callcontrol (2.0.4) unstable; urgency=low
   * Removed deprecated python-application attributes in configuration types
   * Fixed debian package to not create /var/run/callcontrol
   * Fixed debian/copyright to point to GPLv2
-  * Bumped Standards-Version to 3.8.1
+  * Replaced reference to LGPL with GPL in debian/copyright
+  * Removed Lock=1 from rating engine MaxSessionTime request
+  * Fixed typo in loading of calls data
+  * Replaced use of deprecated startSyslog function with start_syslog
+  * Bumped Standards-Version to 3.8.2
 
- -- Lucian Stanescu <luci@ag-projects.com>  Fri, 10 Apr 2009 13:20:25 +0300
+ -- Lucian Stanescu <luci@ag-projects.com>  Wed, 01 Jul 2009 10:55:33 +0300
 
 callcontrol (2.0.3) unstable; urgency=low
 
