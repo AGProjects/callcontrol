@@ -23,7 +23,6 @@ class RadacctTable(str):
         return time.strftime(self)
 
 class RadiusDatabaseConfig(ConfigSection):
-    _datatypes = {'table': RadacctTable}
     user           = ''
     password       = ''
     host           = 'localhost'

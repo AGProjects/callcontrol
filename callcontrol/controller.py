@@ -9,7 +9,7 @@ import re
 import cPickle
 import time
 
-from application.configuration import ConfigSection, ConfigFile
+from application.configuration import ConfigFile, ConfigSection, ConfigSetting
 from application.python.queue import EventQueue
 from application.process import process
 from application import log
@@ -54,10 +54,9 @@ class TimeoutDetection(str):
         return str.__new__(cls, value.lower())
 
 class CallControlConfig(ConfigSection):
-    _datatypes = {'limit': TimeLimit}
     socket            = "%s/socket" % process.runtime_directory
     group             = 'opensips'
-    limit             = None
+    limit             = ConfigSetting(type=TimeLimit, value=None)
     timeout           = 24*60*60 ## timeout calls that are stale for more than 24 hours.
     setupTime         = 90       ## timeout calls that take more than 1'30" to setup.
     checkInterval     = 60       ## check for staled calls and calls that did timeout at every minute.

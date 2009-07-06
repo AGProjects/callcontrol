@@ -7,7 +7,7 @@ import random
 import socket
 from collections import deque
 
-from application.configuration import ConfigSection, ConfigFile
+from application.configuration import ConfigFile, ConfigSection, ConfigSetting
 from application.configuration.datatypes import EndpointAddress
 from application.system import default_host_ip
 from application import log
@@ -49,14 +49,12 @@ class TimeLimit(int):
         return limit
 
 class RatingConfig(ConfigSection):
-    _datatypes = {'address': RatingEngineAddresses}
-    address = []
+    address = ConfigSetting(type=RatingEngineAddresses, value=[])
     timeout = 500
 
 class CallControlConfig(ConfigSection):
-    _datatypes = {'limit': TimeLimit, 'prepaid_limit': TimeLimit}
-    prepaid_limit = None
-    limit = None
+    prepaid_limit = ConfigSetting(type=TimeLimit, value=None)
+    limit = ConfigSetting(type=TimeLimit, value=None)
 
 ## We use this to overwrite some of the settings above on a local basis if needed
 config_file = ConfigFile(configuration_filename)
