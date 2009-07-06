@@ -68,7 +68,7 @@ if __name__ == '__main__':
         log.error('cannot run with both --debug and --terminate options in the same time')
         sys.exit(1)
 
-    if options.debug:
+    if options.debug is not None:
         if options.debug == '':
             log.error('must specify debug command')
             sys.exit(1)
