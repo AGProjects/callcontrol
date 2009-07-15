@@ -1,3 +1,14 @@
+callcontrol (2.0.5) unstable; urgency=low
+
+  * Replaced use of deprecated _datatypes attribute with ConfigSetting
+  * Replaced use of print statement with log.error
+  * Fixed handling of debug option of daemon
+  * Fixed use of process.system_config_directory
+  * Replaced use of read_settings with ConfigSection attributes
+  * Updated dependency on python-application to >= 1.1.2
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Wed, 15 Jul 2009 23:02:31 +0300
+
 callcontrol (2.0.4) unstable; urgency=low
 
   * Removed postinst script since cdbs executes dh programs in correct order
