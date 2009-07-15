@@ -49,20 +49,16 @@ class TimeLimit(int):
         return limit
 
 class RatingConfig(ConfigSection):
+    __configfile__ = configuration_filename
+    __section__ = 'CDRTool'
     address = ConfigSetting(type=RatingEngineAddresses, value=[])
     timeout = 500
 
 class CallControlConfig(ConfigSection):
+    __configfile__ = configuration_filename
+    __section__ = 'CallControl'
     prepaid_limit = ConfigSetting(type=TimeLimit, value=None)
     limit = ConfigSetting(type=TimeLimit, value=None)
-
-## We use this to overwrite some of the settings above on a local basis if needed
-config_file = ConfigFile(configuration_filename)
-try:
-    config_file.read_settings('CDRTool', RatingConfig)
-    config_file.read_settings('CallControl', CallControlConfig)
-except Exception, e:
-    log.fatal('Illegal values in config file: %s' % e)
 
 if not RatingConfig.address:
     try:

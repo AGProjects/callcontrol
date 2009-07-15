@@ -23,6 +23,8 @@ class RadacctTable(str):
         return time.strftime(self)
 
 class RadiusDatabaseConfig(ConfigSection):
+    __configfile__ = configuration_filename
+    __section__ = 'RadiusDatabase'
     user           = ''
     password       = ''
     host           = 'localhost'
@@ -35,9 +37,6 @@ class RadiusDatabaseConfig(ConfigSection):
     mediaInfoField = 'MediaInfo'
     fromTagField   = 'SipFromTag'
     toTagField     = 'SipToTag'
-
-config_file = ConfigFile(configuration_filename)
-config_file.read_settings('RadiusDatabase', RadiusDatabaseConfig)
 
 class RadiusDatabaseError(Exception): pass
 

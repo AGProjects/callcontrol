@@ -54,6 +54,8 @@ class TimeoutDetection(str):
         return str.__new__(cls, value.lower())
 
 class CallControlConfig(ConfigSection):
+    __configfile__ = configuration_filename
+    __section__ = 'CallControl'
     socket            = "%s/socket" % process.runtime_directory
     group             = 'opensips'
     limit             = ConfigSetting(type=TimeLimit, value=None)
@@ -61,9 +63,6 @@ class CallControlConfig(ConfigSection):
     setupTime         = 90       ## timeout calls that take more than 1'30" to setup.
     checkInterval     = 60       ## check for staled calls and calls that did timeout at every minute.
     timeout_detection = TimeoutDetection('dialog') ## whether or not to use the radius database to find out terminated calls
-
-config_file = ConfigFile(configuration_filename)
-config_file.read_settings('CallControl', CallControlConfig)
 
 
 
