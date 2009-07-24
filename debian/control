@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Lucian Stanescu <luci@ag-projects.com>
 Uploaders: Dan Pascu <dan@ag-projects.com>, Adrian Georgescu <ag@ag-projects.com>
-Build-Depends: cdbs (>= 0.4.53), debhelper (>= 7.0.0), python-all-dev (>= 2.4.4), python-support
+Build-Depends: cdbs (>= 0.4.53), debhelper (>= 7.0.0), python (>= 2.5.0), python-support
 Standards-Version: 3.8.2
 
 Package: callcontrol
