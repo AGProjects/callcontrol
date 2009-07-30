@@ -324,10 +324,11 @@ class CallControlServer(object):
         except KeyError, IndexError:
             gid = -1
             mode = 0666
-        self.listening = reactor.listenUNIX(address=self.path, factory=CallControlFactory(self), mode=mode)
+        self.listening = reactor.listenUNIX(address=self.path, factory=CallControlFactory(self))
         ## Make it writable only to the SIP proxy group members
         try:
             os.chown(self.path, -1, gid)
+            os.chmod(self.path, mode)
         except OSError:
             log.warn("Couldn't set access rights for %s" % self.path)
             log.warn("SER may not be able to communicate with us!")
