@@ -49,13 +49,13 @@ class TimeLimit(int):
         return limit
 
 class RatingConfig(ConfigSection):
-    __configfile__ = configuration_filename
+    __cfgfile__ = configuration_filename
     __section__ = 'CDRTool'
     address = ConfigSetting(type=RatingEngineAddresses, value=[])
     timeout = 500
 
 class CallControlConfig(ConfigSection):
-    __configfile__ = configuration_filename
+    __cfgfile__ = configuration_filename
     __section__ = 'CallControl'
     prepaid_limit = ConfigSetting(type=TimeLimit, value=None)
     limit = ConfigSetting(type=TimeLimit, value=None)

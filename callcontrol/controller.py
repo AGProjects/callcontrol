@@ -54,7 +54,7 @@ class TimeoutDetection(str):
         return str.__new__(cls, value.lower())
 
 class CallControlConfig(ConfigSection):
-    __configfile__ = configuration_filename
+    __cfgfile__ = configuration_filename
     __section__ = 'CallControl'
     socket            = "%s/socket" % process.runtime_directory
     group             = 'opensips'
