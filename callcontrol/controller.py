@@ -1,7 +1,7 @@
 # Copyright (C) 2005-2008 AG Projects. See LICENSE for details.
 #
 
-"""Implementation of a call control server for SER."""
+"""Implementation of a call control server for OpenSIPS."""
 
 import os
 import grp
@@ -331,7 +331,7 @@ class CallControlServer(object):
             os.chmod(self.path, mode)
         except OSError:
             log.warn("Couldn't set access rights for %s" % self.path)
-            log.warn("SER may not be able to communicate with us!")
+            log.warn("OpenSIPS may not be able to communicate with us!")
 
         ## Then setup the CallsMonitor if we need to use the radius database
         if CallControlConfig.timeout_detection.use_radius:
