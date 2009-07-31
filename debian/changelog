@@ -1,3 +1,13 @@
+callcontrol (2.0.6) unstable; urgency=low
+
+  * Replaced python-all-dev build dependency with python
+  * Replaced use of deprecated __configfile__ with __cfgfile__
+  * Added dependency checking using application.dependency
+  * Replaced use of deprecated mode argument of listenUNIX with chmod
+  * Modified config.ini.sample to reflect the need for doubling percent signs
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Thu, 30 Jul 2009 15:40:24 +0300
+
 callcontrol (2.0.5) unstable; urgency=low
 
   * Replaced use of deprecated _datatypes attribute with ConfigSetting
