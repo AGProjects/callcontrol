@@ -75,13 +75,14 @@
 ; call controller the normal way.
 ; Database table can be defined as static (e.g. radacct) or as strftime like
 ; time specification (e.g. radacct%Y%m). This section is used if the option
-; timeout_detection in CallControl section is set to `radius'.
+; timeout_detection in CallControl section is set to `radius'. You need to
+; escape the percent signs by doubling them (e.g. radacct%%Y%%m).
 ;
 ;user = dbuser
 ;password = dbpass
 ;host = dbhost
 ;database = radius
-;table = radacct%Y%m
+;table = radacct%%Y%%m
 
 [OpenSIPS]
 ;
