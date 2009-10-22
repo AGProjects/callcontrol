@@ -1,0 +1,4 @@
+ * Implement a lookup mechanism that monitors the A record of hostnames in
+   the configuration and don't use the Hostname datatype since it does a
+   lookup when parsing the configuration file which might fail due to a
+   temporary glitch.
