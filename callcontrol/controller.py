@@ -300,7 +300,7 @@ class CallControlServer(object):
                 if len(user_calls) == 0:
                     del self.users[call.billingParty]
                     self.engines.remove_user(call.billingParty)
-            except valueError:
+            except ValueError:
                 log.error("Call id %s of %s existed in calls table but not in users table" % (call.callid, call.user))
 #            log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
 

@@ -199,7 +199,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
 
     def send_request(self, request):
         if not request.reliable and not self.connected:
-            req.deferred.errback(failure.Failure(RatingEngineError("Connection with the Rating Engine is down")))
+            request.deferred.errback(failure.Failure(RatingEngineError("Connection with the Rating Engine is down")))
             return request
         self._request_queue.append(request)
         if self.__request is None:

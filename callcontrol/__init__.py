@@ -18,7 +18,7 @@ except:
         def __init__(self, *args, **kwargs):
             pass
         def check(self):
-            raise DependencyError("need python-application version %s or higher but it's not installed" % requirements['python-application'])
+            raise DependencyError("need python-application version %s or higher but it's not installed" % package_requirements['python-application'])
 
 dependencies = ApplicationDependencies(**package_requirements)
 
