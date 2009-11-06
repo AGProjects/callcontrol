@@ -7,23 +7,15 @@ a call.
 """
 
 import time
-import random
-import socket
 import re
 
-from application.configuration import ConfigSection, ConfigFile
-from application.configuration.datatypes import NetworkAddress, EndpointAddress
-from application.python.util import Singleton
-from application.system import default_host_ip
 from application import log
 
-from twisted.internet.protocol import DatagramProtocol
 from twisted.internet.error import AlreadyCalled
 from twisted.internet import reactor, defer
 
 from callcontrol.rating import RatingEngineConnections
 from callcontrol.opensips import DialogID, ManagementInterface
-from callcontrol import configuration_filename
 
 
 class SipError(Exception): pass

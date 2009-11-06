@@ -6,7 +6,7 @@
 import time
 import sqlobject
 
-from application.configuration import ConfigSection, ConfigFile
+from application.configuration import ConfigSection
 from application.python.queue import EventQueue
 from application import log
 

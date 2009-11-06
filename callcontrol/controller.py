@@ -9,8 +9,7 @@ import re
 import cPickle
 import time
 
-from application.configuration import ConfigFile, ConfigSection, ConfigSetting
-from application.python.queue import EventQueue
+from application.configuration import ConfigSection, ConfigSetting
 from application.process import process
 from application import log
 

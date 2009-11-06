@@ -7,7 +7,7 @@ import random
 import socket
 from collections import deque
 
-from application.configuration import ConfigFile, ConfigSection, ConfigSetting
+from application.configuration import ConfigSection, ConfigSetting
 from application.configuration.datatypes import EndpointAddress
 from application.system import default_host_ip
 from application import log
@@ -17,7 +17,6 @@ from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import TimeoutError
 from twisted.internet import reactor, defer
 from twisted.protocols.basic import LineOnlyReceiver
-from twisted.protocols.policies import TimeoutMixin
 from twisted.python import failure
 
 from callcontrol import configuration_filename
