@@ -178,9 +178,18 @@ class CallControlProtocol(LineOnlyReceiver):
             if call.billingParty is None:
                 req.deferred.callback('Error')
                 return
-            self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
             self.factory.application.calls[req.callid] = call
 #            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
+        else:
+            # The call was previously setup which means it could be in the the users table
+            try:
+                user_calls = self.factory.application.users[call.billingParty]
+                user_calls.remove(call.callid)
+                if len(user_calls) == 0:
+                    del self.factory.application.users[call.billingParty]
+                    self.factory.application.engines.remove_user(call.billingParty)
+            except (ValueError, KeyError):
+                pass
         deferred = call.setup(req)
         deferred.addCallbacks(callback=self._CC_finish_init, errback=self._CC_init_failed, callbackArgs=[req], errbackArgs=[req])
 
@@ -206,6 +215,7 @@ class CallControlProtocol(LineOnlyReceiver):
                 call.end()
                 req.deferred.callback('No limit') # No limit
             else:
+                self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
                 req.deferred.callback('Limited') # Limited
 
     def _CC_init_failed(self, fail, req):
@@ -299,8 +309,8 @@ class CallControlServer(object):
                 if len(user_calls) == 0:
                     del self.users[call.billingParty]
                     self.engines.remove_user(call.billingParty)
-            except ValueError:
-                log.error("Call id %s of %s existed in calls table but not in users table" % (call.callid, call.user))
+            except (ValueError, KeyError):
+                pass
 #            log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
 
 
