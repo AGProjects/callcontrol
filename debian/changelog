@@ -1,3 +1,12 @@
+callcontrol (2.0.7) unstable; urgency=low
+
+  * Fixed typos and variable references by wrong name
+  * Removed unused imports
+  * Fixed handling of diverted calls
+  * Bumped Standards-Version to 3.8.3
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Tue, 01 Dec 2009 19:18:06 +0000
+
 callcontrol (2.0.6) unstable; urgency=low
 
   * Replaced python-all-dev build dependency with python

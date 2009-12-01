@@ -3,7 +3,7 @@
 
 """SIP Callcontrol"""
 
-__version__ = "2.0.6"
+__version__ = "2.0.7"
 
 configuration_filename = 'config.ini'
 backup_calls_file = 'calls.dat'
