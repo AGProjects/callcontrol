@@ -227,7 +227,7 @@ class Call(Structure):
                             call._setup_timer()
 
     def _start_finish_calllimit(self, limit):
-        if limit is not None:
+        if limit not in (None, 'Locked'):
             delay = limit - self.timelimit
             for callid in self.application.users[self.billingParty]:
                 try:
