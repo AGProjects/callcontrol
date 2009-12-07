@@ -80,12 +80,15 @@ class CallsMonitor(object):
         self.reccall = RecurrentCall(period, self.run)
 
     def run(self):
-        ## Find out terminated calls
-        deferred1 = self.application.db.getTerminatedCalls(self.application.calls)
-        deferred1.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_terminated])
-        deferred2 = self.application.db.getTimedoutCalls(self.application.calls)
-        deferred2.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_timedout])
-        defer.DeferredList([deferred1, deferred2]).addCallback(self._finish_checks)
+        if CallControlConfig.timeout_detection.use_radius:
+            ## Find out terminated calls
+            deferred1 = self.application.db.getTerminatedCalls(self.application.calls)
+            deferred1.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_terminated])
+            deferred2 = self.application.db.getTimedoutCalls(self.application.calls)
+            deferred2.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_timedout])
+            defer.DeferredList([deferred1, deferred2]).addCallback(self._finish_checks)
+        else:
+            self._finish_checks(None)
         return KeepRunning
 
     def shutdown(self):
@@ -342,9 +345,8 @@ class CallControlServer(object):
             log.warn("Couldn't set access rights for %s" % self.path)
             log.warn("OpenSIPS may not be able to communicate with us!")
 
-        ## Then setup the CallsMonitor if we need to use the radius database
-        if CallControlConfig.timeout_detection.use_radius:
-            self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
+        ## Then setup the CallsMonitor
+        self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
         ## Open the connection to the rating engines
         self.engines = RatingEngineConnections()
 

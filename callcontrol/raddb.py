@@ -100,8 +100,9 @@ class RadiusDatabase(object):
                               %(fromTagField)s AS fromtag, %(toTagField)s AS totag
                        FROM   %%(table)s
                        WHERE  %(sessionIdField)s IN %%(ids)s AND
-                              %(stopInfoField)s IS NOT NULL""" % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
-                                                                                                  'ids': ids}
+                              (%(stopInfoField)s IS NOT NULL OR
+                               %(stopTimeField)s IS NOT NULL)""" % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
+                                                                                                    'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
