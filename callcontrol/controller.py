@@ -413,12 +413,13 @@ class CallControlServer(object):
                 ## the calls in the 2 sets below are never overlapping because closed and terminated
                 ## calls have different database fingerprints. so the dictionary update below is safe
                 try:
-                    if self.db is not None:
-                        terminated = self.db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))   ## calls terminated by caller/called
-                        didtimeout = self.db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))     ## calls closed by mediaproxy after a media timeout
-                    else:
-                        terminated = {}
-                        didtimeout = {}
+                    db = self.db if self.db is not None else RadiusDatabase()
+                    try:
+                        terminated = db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))   ## calls terminated by caller/called
+                        didtimeout = db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))     ## calls closed by mediaproxy after a media timeout
+                    finally:
+                        if self.db is None:
+                            db.close()
                 except RadiusDatabaseError, e:
                     log.error("Could not query database: %s" % e)
                 else:
