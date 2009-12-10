@@ -96,13 +96,19 @@ class RadiusDatabase(object):
             if not calls:
                 return {}
             ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
-            query = """SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
-                              %(fromTagField)s AS fromtag, %(toTagField)s AS totag
-                       FROM   %%(table)s
-                       WHERE  %(sessionIdField)s IN %%(ids)s AND
-                              (%(stopInfoField)s IS NOT NULL OR
-                               %(stopTimeField)s IS NOT NULL)""" % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
-                                                                                                    'ids': ids}
+            query = """SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
+                              %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
+                       FROM   %(table)s
+                       WHERE  %(session_id_field)s IN %(ids)s AND
+                              (%(stop_info_field)s IS NOT NULL OR
+                               %(stop_time_field)s IS NOT NULL)""" % {'session_id_field': RadiusDatabaseConfig.sessionIdField,
+                                                                      'duration_field': RadiusDatabaseConfig.durationField,
+                                                                      'from_tag_field': RadiusDatabaseConfig.fromTagField,
+                                                                      'to_tag_field': RadiusDatabaseConfig.toTagField,
+                                                                      'stop_info_field': RadiusDatabaseConfig.stopInfoField,
+                                                                      'stop_time_field': RadiusDatabaseConfig.stopTimeField,
+                                                                      'table': RadiusDatabaseConfig.table,
+                                                                      'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
@@ -121,13 +127,19 @@ class RadiusDatabase(object):
             if not calls:
                 return {}
             ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
-            query = '''SELECT %(sessionIdField)s AS callid, %(durationField)s AS duration,
-                              %(fromTagField)s AS fromtag, %(toTagField)s AS totag
-                       FROM   %%(table)s
-                       WHERE  %(sessionIdField)s IN %%(ids)s AND
-                              %(mediaInfoField)s = 'timeout' AND
-                              %(stopInfoField)s IS NULL''' % RadiusDatabaseConfig.__dict__ % {'table': RadiusDatabaseConfig.table,
-                                                                                              'ids': ids}
+            query = '''SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
+                              %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
+                       FROM   %(table)s
+                       WHERE  %(session_id_field)s IN %(ids)s AND
+                              %(media_info_field)s = 'timeout' AND
+                              %(stop_info_field)s IS NULL''' % {'session_id_field': RadiusDatabaseConfig.sessionIdField,
+                                                                'duration_field': RadiusDatabaseConfig.durationField,
+                                                                'from_tag_field': RadiusDatabaseConfig.fromTagField,
+                                                                'to_tag_field': RadiusDatabaseConfig.toTagField,
+                                                                'media_info_field': RadiusDatabaseConfig.mediaInfoField,
+                                                                'stop_info_field': RadiusDatabaseConfig.stopInfoField,
+                                                                'table': RadiusDatabaseConfig.table,
+                                                                'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
                 try:
