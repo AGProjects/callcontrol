@@ -18,6 +18,7 @@ from callcontrol.rating import RatingEngineConnections
 from callcontrol.opensips import DialogID, ManagementInterface
 
 
+class CallError(Exception): pass
 class SipError(Exception): pass
 
 ##
@@ -96,7 +97,7 @@ class Call(Structure):
     """Defines a call"""
     def __init__(self, request, application):
         Structure.__init__(self)
-        self.prepaid   = False
+        self.prepaid   = request.prepaid
         self.locked    = False ## if the account is locked because another call is in progress
         self.expired   = False ## if call did consume its timelimit before being terminated
         self.created   = time.time()
@@ -153,24 +154,30 @@ class Call(Structure):
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
                 ## unlock previous rating request
+                self.prepaid = request.prepaid
                 if self.prepaid and not self.locked:
                     rating.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[request, deferred], errbackArgs=[deferred])
-                    return deferred
+                else:
+                    rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+                return deferred
         deferred.callback(None)
         return deferred
 
-    def _setup_finish_calllimit(self, limit, deferred):
+    def _setup_finish_calllimit(self, (limit, prepaid), deferred):
         if limit == 'Locked':
             self.timelimit = 0
             self.locked = True
-        else:
+        elif limit is not None:
             self.timelimit = limit
-        if self.timelimit is None:
+        else:
             from callcontrol.controller import CallControlConfig
             self.timelimit = CallControlConfig.limit
-            self.prepaid = False
+        if self.prepaid and not prepaid:
+            self.timelimit = 0
+            deferred.errback(CallError("Caller %s is regarded as postpaid by the rating engine and prepaid by OpenSIPS" % self.user))
+            return
         else:
-            self.prepaid = True
+            self.prepaid = prepaid
         if self.timelimit is not None and self.timelimit > 0:
             self._setup_timer()
         self.__initialized = True
@@ -226,7 +233,7 @@ class Call(Structure):
                             call.timelimit = self.timelimit
                             call._setup_timer()
 
-    def _start_finish_calllimit(self, limit):
+    def _start_finish_calllimit(self, (limit, prepaid)):
         if limit not in (None, 'Locked'):
             delay = limit - self.timelimit
             for callid in self.application.users[self.billingParty]:
@@ -254,6 +261,7 @@ class Call(Structure):
             ManagementInterface().end_dialog(self.dialogid)
         if self.timer:
             self.timer.cancel()
+            self.timer = None
         fullreason = '%s%s' % (self.inprogress and 'disconnected' or 'canceled', reason and (' by %s' % reason) or '')
         if self.inprogress:
             self.endtime = time.time()
@@ -270,13 +278,12 @@ class Call(Structure):
                     log.warn("Time difference between sending BYEs and actual closing is > 10 seconds")
             else:
                 self.duration = duration
-        if self.prepaid and not self.locked:
+        if self.prepaid and not self.locked and self.timelimit > 0:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
             rating = RatingEngineConnections.getConnection(self)
             rating.debitBalance(self).addCallbacks(callback=self._end_finish, errback=self._end_error, callbackArgs=[reason and fullreason or None])
         elif reason is not None:
             log.info("Call id %s of %s to %s %s%s" % (self.callid, self.user, self.ruri, fullreason, self.duration and (' after %d seconds' % self.duration) or ''))
-        self.timer = None
 
     def _end_finish(self, (timelimit, value), reason):
         if timelimit is not None and timelimit > 0:

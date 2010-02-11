@@ -128,23 +128,34 @@ class RatingEngineProtocol(LineOnlyReceiver):
             self._respond(str(e), success=False)
 
     def _PE_maxsessiontime(self, line):
+        lines = line.splitlines()
+
+        limit = lines[0].strip().capitalize()
         try:
-            limit = line.splitlines()[0].strip().capitalize()
-            try:
-                limit = int(limit)
-            except:
-                if limit == 'None':
-                    limit = None
-                elif limit == 'Locked':
-                    pass
-                else:
-                    raise ValueError("limit must be a non-negative number, None or Locked: %s" % str(limit))
+            limit = int(limit)
+        except:
+            if limit == 'None':
+                limit = None
+            elif limit == 'Locked':
+                pass
             else:
-                if limit < 0:
-                    raise ValueError("limit must be a non-negative number, None or Locked: %s" % str(limit))
-        except Exception, e:
-            raise e
-        return limit
+                raise ValueError("limit must be a non-negative number, None or Locked: %s" % limit)
+        else:
+            if limit < 0:
+                raise ValueError("limit must be a non-negative number, None or Locked: %s" % limit)
+
+        info = dict(line.split('=', 1) for line in lines[1:])
+        if 'type' in info:
+            type = info['type'].lower()
+            if type == 'prepaid':
+                prepaid = True
+            elif type == 'postpaid':
+                prepaid = False
+            else:
+                raise ValueError("prepaid must be either True or False: %s" % prepaid)
+        else:
+            prepaid = limit is not None
+        return limit, prepaid
 
     def _PE_debitbalance(self, line):
         valid_answers = ('Ok', 'Failed', 'Not prepaid')

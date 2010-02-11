@@ -216,10 +216,10 @@ class CallControlProtocol(LineOnlyReceiver):
                 log.info("Call id %s of %s to %s is postpaid not limited" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
-                req.deferred.callback('No limit') # No limit
-            else:
+                req.deferred.callback('No limit')
+            else: ## call limited by credit value or a global limit
                 self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
-                req.deferred.callback('Limited') # Limited
+                req.deferred.callback('Limited')
 
     def _CC_init_failed(self, fail, req):
         self._send_error_reply(fail)
@@ -494,6 +494,17 @@ class Request(object):
         self.from_ = self.__dict__['from']
         if self.cmd=='init' and self.diverter.lower()=='none':
             self.diverter = None
+        try:
+            self.prepaid
+        except AttributeError:
+            self.prepaid = None
+        else:
+            if self.prepaid.lower() == 'true':
+                self.prepaid = True
+            elif self.prepaid.lower() == 'false':
+                self.prepaid = False
+            else:
+                self.prepaid = None
 
     def _RE_debug(self):
         if self.show == 'session':
@@ -512,7 +523,7 @@ class Request(object):
 
     def __str__(self):
         if self.cmd == 'init':
-            return "%(cmd)s: callid=%(callid)s from=%(from_)s ruri=%(ruri)s diverter=%(diverter)s sourceip=%(sourceip)s" % self.__dict__
+            return "%(cmd)s: callid=%(callid)s from=%(from_)s ruri=%(ruri)s diverter=%(diverter)s sourceip=%(sourceip)s prepaid=%(prepaid)s" % self.__dict__
         elif self.cmd == 'start':
             return "%(cmd)s: callid=%(callid)s dialogid=%(dialogid)s" % self.__dict__
         elif self.cmd == 'stop':
