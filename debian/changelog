@@ -1,3 +1,13 @@
+callcontrol (2.0.9) unstable; urgency=low
+
+  * Improved prepaid call handling by also checking OpenSIPS's prepaid flag
+  * Removed unused exceptions
+  * Updated copyright years
+  * Added $remote_fs to Required-Start and Required-Stop in init script
+  * Bumped Standards-Version to 3.8.4
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Tue, 09 Feb 2010 17:48:34 +0000
+
 callcontrol (2.0.8) unstable; urgency=low
 
   * Fixed issue with pending calls after startup when dialog detection is used
