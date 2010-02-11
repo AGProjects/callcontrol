@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2008 AG Projects. See LICENSE for details.
+# Copyright (C) 2005-2010 AG Projects. See LICENSE for details.
 #
 
 """
