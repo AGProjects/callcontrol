@@ -19,14 +19,11 @@ from callcontrol.opensips import DialogID, ManagementInterface
 
 
 class CallError(Exception): pass
-class SipError(Exception): pass
+
 
 ##
 ## Call data types
 ##
-
-class InvalidRequestError(Exception): pass
-
 
 class ReactorTimer(object):
     def __init__(self, delay, function, args=[], kwargs={}):
