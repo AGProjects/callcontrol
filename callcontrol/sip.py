@@ -174,7 +174,7 @@ class Call(Structure):
             deferred.errback(CallError("Caller %s is regarded as postpaid by the rating engine and prepaid by OpenSIPS" % self.user))
             return
         else:
-            self.prepaid = prepaid
+            self.prepaid = prepaid and limit is not None
         if self.timelimit is not None and self.timelimit > 0:
             self._setup_timer()
         self.__initialized = True
