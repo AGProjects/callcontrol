@@ -130,7 +130,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def _PE_maxsessiontime(self, line):
         lines = line.splitlines()
 
-        limit = lines[0].strip().capitalize()
+        try:
+            limit = lines[0].strip().capitalize()
+        except IndexError:
+            raise ValueError("Empty reply from rating engine")
         try:
             limit = int(limit)
         except:
@@ -160,7 +163,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def _PE_debitbalance(self, line):
         valid_answers = ('Ok', 'Failed', 'Not prepaid')
         lines = line.splitlines()
-        result = lines[0].strip().capitalize()
+        try:
+            result = lines[0].strip().capitalize()
+        except IndexError:
+            raise ValueError("Empty reply from rating engine")
         if result not in valid_answers:
             log.error("Invalid reply from rating engine: `%s'" % lines[0].strip())
             log.warn("Rating engine possible failed query: %s" % self.__request)
