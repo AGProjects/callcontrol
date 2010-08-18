@@ -333,7 +333,7 @@ class CallControlServer(object):
         try:
             gid = grp.getgrnam(self.group)[2]
             mode = 0660
-        except KeyError, IndexError:
+        except (KeyError, IndexError):
             gid = -1
             mode = 0666
         self.listening = reactor.listenUNIX(address=self.path, factory=CallControlFactory(self))
