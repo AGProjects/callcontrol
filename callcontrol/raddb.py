@@ -17,9 +17,8 @@ from callcontrol import configuration_filename
 
 class RadacctTable(str):
     """A radacct table name"""
-    def __init__(self, value):
-        str.__init__(self, value)
-    def __get__(self, obj, type_=None):
+    @property
+    def normalized(self):
         return time.strftime(self)
 
 class RadiusDatabaseConfig(ConfigSection):
@@ -107,7 +106,7 @@ class RadiusDatabase(object):
                                                                       'to_tag_field': RadiusDatabaseConfig.toTagField,
                                                                       'stop_info_field': RadiusDatabaseConfig.stopInfoField,
                                                                       'stop_time_field': RadiusDatabaseConfig.stopTimeField,
-                                                                      'table': RadiusDatabaseConfig.table,
+                                                                      'table': RadiusDatabaseConfig.table.normalized,
                                                                       'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
@@ -138,7 +137,7 @@ class RadiusDatabase(object):
                                                                 'to_tag_field': RadiusDatabaseConfig.toTagField,
                                                                 'media_info_field': RadiusDatabaseConfig.mediaInfoField,
                                                                 'stop_info_field': RadiusDatabaseConfig.stopInfoField,
-                                                                'table': RadiusDatabaseConfig.table,
+                                                                'table': RadiusDatabaseConfig.table.normalized,
                                                                 'ids': ids}
             rows = self.conn.queryAll(query)
             def find(row, calls):
