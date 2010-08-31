@@ -1,3 +1,12 @@
+callcontrol (2.0.11) unstable; urgency=low
+
+  * Improved response handling from rating engine to give clearer errors
+  * Fixed RadiusDatabase.table setting for python-application >= 1.1.2
+  * Fixed except clause missing parentheses
+  * Bumped Standards-Version to 3.9.1
+
+ -- Lucian Stanescu <luci@ag-projects.com>  Tue, 31 Aug 2010 17:57:50 +0300
+
 callcontrol (2.0.10) unstable; urgency=low
 
   * Fixed handling of free prepaid calls when a global limit is in place
