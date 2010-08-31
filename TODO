@@ -4,3 +4,4 @@
    temporary glitch.
  * Increase robustness by not failing with a weird error message ("list index
    out of range") when there are no connections to the rating engine.
+ * Implement support for DebitBalance for SIP MESSAGE (SMS)
