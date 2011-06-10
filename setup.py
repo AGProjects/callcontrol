@@ -1,13 +1,14 @@
 #!/usr/bin/python
 
-from distutils.core import setup, Extension
+import re
+from distutils.core import setup
 
-import callcontrol
 
-macros  = [('MODULE_VERSION', '"%s"' % callcontrol.__version__)]
+def get_version():
+    return re.search(r"""__version__\s+=\s+(?P<quote>['"])(?P<version>.+?)(?P=quote)""", open('callcontrol/__init__.py').read()).group('version')
 
 setup(name         = "callcontrol",
-      version      = callcontrol.__version__,
+      version      = get_version(),
       author       = "Dan Pascu",
       author_email = "dan@ag-projects.com",
       description  = "SIP call control",
