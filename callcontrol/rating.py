@@ -9,9 +9,9 @@ from collections import deque
 
 from application.configuration import ConfigSection, ConfigSetting
 from application.configuration.datatypes import EndpointAddress
-from application.system import default_host_ip
+from application.system import host
 from application import log
-from application.python.util import Singleton
+from application.python.types import Singleton
 
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import TimeoutError
@@ -61,9 +61,9 @@ class CallControlConfig(ConfigSection):
 
 if not RatingConfig.address:
     try:
-        RatingConfig.address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1])
+        RatingConfig.address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1])
     except Exception, e:
-        log.fatal('Cannot resolve hostname %s' % ('cdrtool.' + socket.gethostbyaddr(default_host_ip)[0].split('.', 1)[1]))
+        log.fatal('Cannot resolve hostname %s' % ('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1]))
 
 
 class RatingError(Exception): pass
