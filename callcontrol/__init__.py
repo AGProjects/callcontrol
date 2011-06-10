@@ -8,7 +8,7 @@ __version__ = "2.0.11"
 configuration_filename = 'config.ini'
 backup_calls_file = 'calls.dat'
 
-package_requirements = {'python-application': '1.1.5'}
+package_requirements = {'python-application': '1.2.8'}
 
 try:
     from application.dependency import ApplicationDependencies
