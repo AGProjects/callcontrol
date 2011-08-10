@@ -19,6 +19,7 @@ from callcontrol.opensips import DialogID, ManagementInterface
 
 
 class CallError(Exception): pass
+class DuplicatedCallIDError(CallError): pass
 
 
 ##
@@ -121,6 +122,7 @@ class Call(Structure):
             else:
                 self.billingParty = None
                 self.user = None
+        self.__initializing = False
         self.__initialized = False
         self.application = application
 
@@ -144,10 +146,11 @@ class Call(Structure):
         """
         deferred = defer.Deferred()
         rating = RatingEngineConnections.getConnection(self)
-        if not self.__initialized: ## setup called for the first time
+        if not self.__initializing and not self.__initialized: ## setup called for the first time
+            self.__initializing = True
             rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
-        elif self.__initialized and self.starttime is None: ## call was previously setup but not yet started
+        elif self.__initializing or (self.__initialized and self.starttime is None): ## call was previously setup but not yet started
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
                 ## unlock previous rating request
@@ -157,7 +160,8 @@ class Call(Structure):
                 else:
                     rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
                 return deferred
-        deferred.callback(None)
+        # There is another call initialized and started, can't accept this one (same CallID)
+        deferred.errback(DuplicatedCallIDError("Duplicated CallID: %s" % self.callid))
         return deferred
 
     def _setup_finish_calllimit(self, (limit, prepaid), deferred):
@@ -177,6 +181,7 @@ class Call(Structure):
             self.prepaid = prepaid and limit is not None
         if self.timelimit is not None and self.timelimit > 0:
             self._setup_timer()
+        self.__initializing = False
         self.__initialized = True
         deferred.callback(None)
 

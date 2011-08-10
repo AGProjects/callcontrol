@@ -20,7 +20,7 @@ from twisted.python import failure
 
 from callcontrol.scheduler import RecurrentCall, KeepRunning
 from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
-from callcontrol.sip import Call
+from callcontrol.sip import Call, DuplicatedCallIDError
 from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename, backup_calls_file
 
@@ -165,7 +165,10 @@ class CallControlProtocol(LineOnlyReceiver):
     def _send_error_reply(self, fail):
         log.error(fail.value)
 #        log.debug("Sent 'Error' reply") #DEBUG
-        self.sendLine('Error')
+        if fail.check(DuplicatedCallIDError):
+            self.sendLine('Duplicated callid')
+        else:
+            self.sendLine('Error')
 
     def _CC_init(self, req):
         try:
