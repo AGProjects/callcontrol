@@ -68,8 +68,6 @@ class CallControlConfig(ConfigSection):
 ## Classes
 
 class CommandError(Exception):        pass
-class CallControlError(Exception):    pass
-class NoProviderError(Exception):     pass
 class InvalidRequestError(Exception): pass
 
 
