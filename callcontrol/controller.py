@@ -175,12 +175,12 @@ class CallControlProtocol(LineOnlyReceiver):
             call = self.factory.application.calls[req.callid]
         except KeyError:
             call = Call(req, self.factory.application)
+            if call.billingParty is None:
+                req.deferred.callback('Error')
+                return
             if call.callid in self.factory.application.users.get(call.billingParty, ()):
                 log.error("Call id %s of %s to %s exists in users table but not in calls table" % (call.callid, call.user, call.ruri))
                 req.deferred.callback('Locked')
-                return
-            if call.billingParty is None:
-                req.deferred.callback('Error')
                 return
             self.factory.application.calls[req.callid] = call
 #            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
@@ -204,7 +204,11 @@ class CallControlProtocol(LineOnlyReceiver):
             log.error("Call id %s disappeared before we could finish initializing it" % req.callid)
             req.deferred.callback('Error')
         else:
-            if call.locked: ## prepaid account already locked by another call
+            if req.call_limit is not None and len(self.factory.application.users.get(call.billingParty, ())) == req.call_limit:
+                self.factory.application.clean_call(req.callid)
+                call.end()
+                req.deferred.callback('Call limit reached')
+            elif call.locked: ## prepaid account already locked by another call
                 log.info("Call id %s of %s to %s forbidden because the account is locked" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
@@ -214,14 +218,15 @@ class CallControlProtocol(LineOnlyReceiver):
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No credit')
-            elif call.timelimit is None: ## no limit for call
+            elif req.call_limit is not None or call.timelimit is not None: ## call limited by credit value, a global time limit or number of calls
+                log.info("User %s can make %s concurrent calls" % (call.billingParty, req.call_limit or "unlimited"))
+                self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
+                req.deferred.callback('Limited')
+            else: ## no limit for call
                 log.info("Call id %s of %s to %s is postpaid not limited" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No limit')
-            else: ## call limited by credit value or a global limit
-                self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
-                req.deferred.callback('Limited')
 
     def _CC_init_failed(self, fail, req):
         self._send_error_reply(fail)
@@ -480,7 +485,7 @@ class Request(object):
         except ValueError:
             raise InvalidRequestError("Badly formatted request")
         for p in self.__methods[cmd]:
-            try: 
+            try:
                 parameters[p]
             except KeyError:
                 raise InvalidRequestError("Missing %s from request" % p)
@@ -507,6 +512,13 @@ class Request(object):
                 self.prepaid = False
             else:
                 self.prepaid = None
+        try:
+            self.call_limit = int(self.call_limit)
+        except (AttributeError, ValueError):
+            self.call_limit = None
+        else:
+            if self.call_limit <= 0:
+                self.call_limit = None
 
     def _RE_debug(self):
         if self.show == 'session':
@@ -525,7 +537,7 @@ class Request(object):
 
     def __str__(self):
         if self.cmd == 'init':
-            return "%(cmd)s: callid=%(callid)s from=%(from_)s ruri=%(ruri)s diverter=%(diverter)s sourceip=%(sourceip)s prepaid=%(prepaid)s" % self.__dict__
+            return "%(cmd)s: callid=%(callid)s from=%(from_)s ruri=%(ruri)s diverter=%(diverter)s sourceip=%(sourceip)s prepaid=%(prepaid)s call_limit=%(call_limit)s" % self.__dict__
         elif self.cmd == 'start':
             return "%(cmd)s: callid=%(callid)s dialogid=%(dialogid)s" % self.__dict__
         elif self.cmd == 'stop':
