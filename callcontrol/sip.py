@@ -19,7 +19,6 @@ from callcontrol.opensips import DialogID, ManagementInterface
 
 
 class CallError(Exception): pass
-class DuplicatedCallIDError(CallError): pass
 
 
 ##
@@ -109,6 +108,7 @@ class Call(Structure):
         self.diverter  = request.diverter
         self.ruri      = request.ruri
         self.sourceip  = request.sourceip
+        self.token     = request.call_token
         self['from']   = request.from_ ## from is a python keyword
         ## Determine who will pay for the call
         if self.diverter is not None:
@@ -122,7 +122,6 @@ class Call(Structure):
             else:
                 self.billingParty = None
                 self.user = None
-        self.__initializing = False
         self.__initialized = False
         self.application = application
 
@@ -146,11 +145,10 @@ class Call(Structure):
         """
         deferred = defer.Deferred()
         rating = RatingEngineConnections.getConnection(self)
-        if not self.__initializing and not self.__initialized: ## setup called for the first time
-            self.__initializing = True
+        if not self.__initialized: ## setup called for the first time
             rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
             return deferred
-        elif self.__initializing or (self.__initialized and self.starttime is None): ## call was previously setup but not yet started
+        elif self.__initialized and self.starttime is None:
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
                 ## unlock previous rating request
@@ -160,8 +158,7 @@ class Call(Structure):
                 else:
                     rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
                 return deferred
-        # There is another call initialized and started, can't accept this one (same CallID)
-        deferred.errback(DuplicatedCallIDError("Duplicated CallID: %s" % self.callid))
+        defer.callback(None)
         return deferred
 
     def _setup_finish_calllimit(self, (limit, prepaid), deferred):
@@ -181,7 +178,6 @@ class Call(Structure):
             self.prepaid = prepaid and limit is not None
         if self.timelimit is not None and self.timelimit > 0:
             self._setup_timer()
-        self.__initializing = False
         self.__initialized = True
         deferred.callback(None)
 
@@ -219,41 +215,33 @@ class Call(Structure):
                 for callid in self.application.users[self.billingParty]:
                     if callid == self.callid:
                         continue
-                    try:
-                        call = self.application.calls[callid]
-                    except KeyError:
-                        log.error("Call id %s exists in users table but not in calls table" % callid)
-                    else:
-                        if not call.prepaid:
-                            continue # only alter prepaid calls
-                        if call.inprogress:
-                            call.timelimit = self.starttime - call.starttime + self.timelimit
-                            if call.timer:
-                                call.timer.reset(self.timelimit)
-                                log.info("Call id %s of %s to %s also set to %d seconds" % (callid, call.user, call.ruri, self.timelimit))
-                        elif not call.complete:
-                            call.timelimit = self.timelimit
-                            call._setup_timer()
+                    call = self.application.calls[callid]
+                    if not call.prepaid:
+                        continue # only alter prepaid calls
+                    if call.inprogress:
+                        call.timelimit = self.starttime - call.starttime + self.timelimit
+                        if call.timer:
+                            call.timer.reset(self.timelimit)
+                            log.info("Call id %s of %s to %s also set to %d seconds" % (callid, call.user, call.ruri, self.timelimit))
+                    elif not call.complete:
+                        call.timelimit = self.timelimit
+                        call._setup_timer()
 
     def _start_finish_calllimit(self, (limit, prepaid)):
         if limit not in (None, 'Locked'):
             delay = limit - self.timelimit
             for callid in self.application.users[self.billingParty]:
-                try:
-                    call = self.application.calls[callid]
-                except KeyError:
-                    log.error("Call id %s exists in users table but not in calls table" % callid)
-                else:
-                    if not call.prepaid:
-                        continue # only alter prepaid calls
-                    if call.inprogress:
-                        call.timelimit += delay
-                        if call.timer:
-                            call.timer.delay(delay)
-                            log.info("Call id %s of %s to %s %s maximum %d seconds" % (callid, call.user, call.ruri, (call is self) and 'connected for' or 'previously connected set to', limit))
-                    elif not call.complete:
-                        call.timelimit = self.timelimit
-                        call._setup_timer()
+                call = self.application.calls[callid]
+                if not call.prepaid:
+                    continue # only alter prepaid calls
+                if call.inprogress:
+                    call.timelimit += delay
+                    if call.timer:
+                        call.timer.delay(delay)
+                        log.info("Call id %s of %s to %s %s maximum %d seconds" % (callid, call.user, call.ruri, (call is self) and 'connected for' or 'previously connected set to', limit))
+                elif not call.complete:
+                    call.timelimit = self.timelimit
+                    call._setup_timer()
 
     def _start_error(self, fail):
         log.info("Could not get call limit for call id %s of %s to %s" % (self.callid, self.user, self.ruri))
@@ -291,21 +279,17 @@ class Call(Structure):
         if timelimit is not None and timelimit > 0:
             now = time.time()
             for callid in self.application.users.get(self.billingParty, ()):
-                try:
-                    call = self.application.calls[callid]
-                except KeyError:
-                    log.error("Call id %s exists in users table but not in calls table" % callid)
-                else:
-                    if not call.prepaid:
-                        continue # only alter prepaid calls
-                    if call.inprogress:
-                        call.timelimit = now - call.starttime + timelimit
-                        if call.timer:
-                            log.info("Call id %s of %s to %s previously connected set to %d seconds" % (callid, call.user, call.ruri, timelimit))
-                            call.timer.reset(timelimit)
-                    elif not call.complete:
-                        call.timelimit = timelimit
-                        call._setup_timer()
+                call = self.application.calls[callid]
+                if not call.prepaid:
+                    continue # only alter prepaid calls
+                if call.inprogress:
+                    call.timelimit = now - call.starttime + timelimit
+                    if call.timer:
+                        log.info("Call id %s of %s to %s previously connected set to %d seconds" % (callid, call.user, call.ruri, timelimit))
+                        call.timer.reset(timelimit)
+                elif not call.complete:
+                    call.timelimit = timelimit
+                    call._setup_timer()
         # log ended call
         if self.duration > 0:
             log.info("Call id %s of %s to %s %s after %d seconds, call price is %s" % (self.callid, self.user, self.ruri, reason, self.duration, value))

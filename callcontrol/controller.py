@@ -20,7 +20,7 @@ from twisted.python import failure
 
 from callcontrol.scheduler import RecurrentCall, KeepRunning
 from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
-from callcontrol.sip import Call, DuplicatedCallIDError
+from callcontrol.sip import Call
 from callcontrol.rating import RatingEngineConnections
 from callcontrol import configuration_filename, backup_calls_file
 
@@ -165,10 +165,7 @@ class CallControlProtocol(LineOnlyReceiver):
     def _send_error_reply(self, fail):
         log.error(fail.value)
 #        log.debug("Sent 'Error' reply") #DEBUG
-        if fail.check(DuplicatedCallIDError):
-            self.sendLine('Duplicated callid')
-        else:
-            self.sendLine('Error')
+        self.sendLine('Error')
 
     def _CC_init(self, req):
         try:
@@ -178,13 +175,13 @@ class CallControlProtocol(LineOnlyReceiver):
             if call.billingParty is None:
                 req.deferred.callback('Error')
                 return
-            if call.callid in self.factory.application.users.get(call.billingParty, ()):
-                log.error("Call id %s of %s to %s exists in users table but not in calls table" % (call.callid, call.user, call.ruri))
-                req.deferred.callback('Locked')
-                return
             self.factory.application.calls[req.callid] = call
 #            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
         else:
+            if call.token != req.call_token:
+                log.error("Call id %s is duplicated" % call.callid)
+                req.deferred.callback('Duplicated callid')
+                return
             # The call was previously setup which means it could be in the the users table
             try:
                 user_calls = self.factory.application.users[call.billingParty]
@@ -519,6 +516,13 @@ class Request(object):
         else:
             if self.call_limit <= 0:
                 self.call_limit = None
+        try:
+            self.call_token
+        except AttributeError:
+            self.call_token = None
+        else:
+            if not self.call_token or self.call_token.lower() == 'none':
+                self.call_token = None
 
     def _RE_debug(self):
         if self.show == 'session':
