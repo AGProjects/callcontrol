@@ -1,3 +1,11 @@
+callcontrol (2.0.15) unstable; urgency=low
+
+  * Added support for limiting number of simultaneous calls per user
+  * Also call end() method for calls with no credit
+  * Properly fix duplicated CallID detection
+
+ -- Saul Ibarra <saul@ag-projects.com>  Fri, 09 Sep 2011 16:42:08 +0200
+
 callcontrol (2.0.14) unstable; urgency=low
 
   * Avoid handling requests with a duplicated CallID
