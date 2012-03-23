@@ -158,7 +158,7 @@ class Call(Structure):
                 else:
                     rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
                 return deferred
-        defer.callback(None)
+        deferred.callback(None)
         return deferred
 
     def _setup_finish_calllimit(self, (limit, prepaid), deferred):
