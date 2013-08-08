@@ -201,7 +201,7 @@ class CallControlProtocol(LineOnlyReceiver):
             log.error("Call id %s disappeared before we could finish initializing it" % req.callid)
             req.deferred.callback('Error')
         else:
-            if req.call_limit is not None and len(self.factory.application.users.get(call.billingParty, ())) == req.call_limit:
+            if req.call_limit is not None and len(self.factory.application.users.get(call.billingParty, ())) >= req.call_limit:
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Call limit reached')
