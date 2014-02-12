@@ -288,7 +288,8 @@ class RatingEngine(object):
         if call.inprogress:
             args['State'] = 'Connected'
         req = RatingRequest('MaxSessionTime', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
-                          Gateway=call.sourceip, Duration=max_duration, **args)
+                          Gateway=call.sourceip, Duration=max_duration,
+                          Application=call.sip_application, **args)
         if self.connection is not None:
             return self.connection.protocol.send_request(req).deferred
         else:
@@ -297,7 +298,8 @@ class RatingEngine(object):
     
     def debitBalance(self, call, reliable=True):
         req = RatingRequest('DebitBalance', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
-                      Gateway=call.sourceip, Duration=call.duration)
+                      Gateway=call.sourceip, Duration=call.duration,
+                      Application=call.sip_application)
         if self.connection is not None:
             return self.connection.protocol.send_request(req).deferred
         else:
