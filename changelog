@@ -1,3 +1,12 @@
+callcontrol (2.0.16) unstable; urgency=low
+
+  * Fixed checking call limit in certain cases
+  * Fixed calling function in the module instead of the object
+  * Added sip-application type to rating engine calls
+  * Bumped Standards-Version to 3.9.5
+
+ -- Tijmen de Mes <tijmen@ag-projects.com>  Tue, 18 Feb 2014 10:45:23 +0100
+
 callcontrol (2.0.15) unstable; urgency=low
 
   * Added support for limiting number of simultaneous calls per user
