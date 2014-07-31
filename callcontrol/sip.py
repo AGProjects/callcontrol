@@ -130,7 +130,7 @@ class Call(Structure):
         return ("callid=%(callid)s from=%(from)s ruri=%(ruri)s "
                 "diverter=%(diverter)s sourceip=%(sourceip)s "
                 "timelimit=%(timelimit)s status=%%s" % self % self.status)
-    
+
     def __expire(self):
         self.expired = True
         self.application.clean_call(self.callid)
@@ -139,7 +139,7 @@ class Call(Structure):
     def setup(self, request):
         """
         Perform call setup when first called (determine time limit and add timer).
-        
+
         If call was previously setup but did not start yet, and the new request
         changes call parameters (ruri, diverter, ...), then update the call
         parameters and redo the setup to update the timer and time limit.
@@ -296,10 +296,10 @@ class Call(Structure):
             log.info("Call id %s of %s to %s %s after %d seconds, call price is %s" % (self.callid, self.user, self.ruri, reason, self.duration, value))
         elif reason is not None:
             log.info("Call id %s of %s to %s %s" % (self.callid, self.user, self.ruri, reason))
- 
+
     def _end_error(self, fail):
         log.info("Could not debit balance for call id %s of %s to %s" % (self.callid, self.user, self.ruri))
-    
+
     status     = property(lambda self: self.inprogress and 'in-progress' or 'pending')
     complete   = property(lambda self: self.dialogid is not None)
     inprogress = property(lambda self: self.starttime is not None and self.endtime is None)

@@ -290,7 +290,7 @@ class CallControlServer(object):
             os.unlink(self.path)
         except OSError:
             pass
-        
+
         self.listening = None
         self.engines = None
         self.monitor = None
@@ -298,7 +298,7 @@ class CallControlServer(object):
             self.db = RadiusDatabase()
         else:
             self.db = None
-        
+
         self.calls = {}
         self.users = {}
         self._restore_calls()
@@ -364,7 +364,7 @@ class CallControlServer(object):
         if self.db is not None:
             self.db.close()
         self._save_calls()
-    
+
     def _save_calls(self):
         if self.calls:
             log.info('Saving calls')
@@ -437,7 +437,7 @@ class CallControlServer(object):
                             callinfo['call'] = call
                             call.timer = None
                             continue
-                    ## close all calls that were already terminated or did timeout 
+                    ## close all calls that were already terminated or did timeout
                     count = 0
                     for callinfo in terminated.values():
                         call = callinfo.get('call')
