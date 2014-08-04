@@ -145,22 +145,39 @@ class Call(Structure):
         parameters and redo the setup to update the timer and time limit.
         """
         deferred = defer.Deferred()
-        rating = RatingEngineConnections.getConnection(self)
-        if not self.__initialized: ## setup called for the first time
-            rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+        if not self.__initialized:  ## setup called for the first time
+            if self.prepaid:
+                rating = RatingEngineConnections.getConnection(self)
+                rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+            else:
+                deferred.addCallback(self._setup_finish_timelimit)
+                deferred.callback(None)
             return deferred
         elif self.__initialized and self.starttime is None:
             if self.diverter != request.diverter or self.ruri != request.ruri:
                 ## call parameters have changed.
                 ## unlock previous rating request
                 self.prepaid = request.prepaid
-                if self.prepaid and not self.locked:
-                    rating.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[request, deferred], errbackArgs=[deferred])
+                if self.prepaid:
+                    rating = RatingEngineConnections.getConnection(self)
+                    if not self.locked:
+                        rating.debitBalance(self).addCallbacks(callback=self._setup_finish_debitbalance, errback=self._setup_error, callbackArgs=[request, deferred], errbackArgs=[deferred])
+                    else:
+                        rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
                 else:
-                    rating.getCallLimit(self, reliable=False).addCallbacks(callback=self._setup_finish_calllimit, errback=self._setup_error, callbackArgs=[deferred], errbackArgs=[deferred])
+                    deferred.addCallback(self._setup_finish_timelimit)
+                    deferred.callback(None)
                 return deferred
-        deferred.callback(None)
-        return deferred
+        else:
+            deferred.callback(None)
+            return deferred
+
+    def _setup_finish_timelimit(self, result):
+        from callcontrol.controller import CallControlConfig
+        self.timelimit = CallControlConfig.limit
+        if self.timelimit is not None and self.timelimit > 0:
+            self._setup_timer()
+        self.__initialized = True
 
     def _setup_finish_calllimit(self, (limit, prepaid), deferred):
         if limit == 'Locked':
