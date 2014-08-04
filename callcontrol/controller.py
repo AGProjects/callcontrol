@@ -523,6 +523,10 @@ class Request(object):
         else:
             if not self.call_token or self.call_token.lower() == 'none':
                 self.call_token = None
+        try:
+            self.sip_application
+        except AttributeError:
+            self.sip_application = ''
 
     def _RE_debug(self):
         if self.show == 'session':

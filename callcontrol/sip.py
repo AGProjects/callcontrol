@@ -109,7 +109,7 @@ class Call(Structure):
         self.ruri      = request.ruri
         self.sourceip  = request.sourceip
         self.token     = request.call_token
-        self.sip_application = request.application # application is used below
+        self.sip_application = request.sip_application
         self['from']   = request.from_ ## from is a python keyword
         ## Determine who will pay for the call
         if self.diverter is not None:
