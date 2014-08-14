@@ -307,19 +307,19 @@ class CallControlServer(object):
         try:
             call = self.calls[callid]
         except KeyError:
-            pass
+            return
         else:
             del self.calls[callid]
+            user_calls = self.users.get(call.billingParty, [])
             try:
-                user_calls = self.users[call.billingParty]
                 user_calls.remove(callid)
-                if len(user_calls) == 0:
-                    del self.users[call.billingParty]
-                    self.engines.remove_user(call.billingParty)
-            except (ValueError, KeyError):
+            except ValueError:
                 pass
-#            log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
 
+            if not user_calls:
+                self.users.pop(call.billingParty, None)
+                self.engines.remove_user(call.billingParty)
+   #      log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
 
     def run(self):
         ## Do the startup stuff
