@@ -10,7 +10,7 @@ from application.configuration import ConfigSection
 from application.python.queue import EventQueue
 from application import log
 
-from twisted.internet import defer, reactor
+from twisted.internet import defer, reactor, threads
 from twisted.python import failure
 
 from callcontrol import configuration_filename
@@ -55,8 +55,12 @@ class RadiusDatabase(object):
         self.conn = sqlobject.connectionForURI("mysql://%s%s/%s" % (credentials, RadiusDatabaseConfig.host, RadiusDatabaseConfig.database))
 
     def close(self):
-        self.conn.close()
+        return threads.deferToThread(self._close)
+
+    def _close(self):
         self.queue.stop()
+        self.queue.join()
+        self.conn.close()
 
     def getTerminatedCalls(self, calls):
         """

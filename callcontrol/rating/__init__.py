@@ -1,15 +1,13 @@
-# Copyright (C) 2005-2010 AG Projects. See LICENSE for details.
+# Copyright (C) 2005-2014 AG Projects. See LICENSE for details.
 #
 
 """Rating engine interface implementation."""
 
 import random
-import socket
 from collections import deque
 
 from application.configuration import ConfigSection, ConfigSetting
 from application.configuration.datatypes import EndpointAddress
-from application.system import host
 from application import log
 from application.python.types import Singleton
 
@@ -24,15 +22,19 @@ from callcontrol import configuration_filename
 ##
 ## Rating engine configuration
 ##
-class RatingEngineAddress(EndpointAddress):
-    default_port = 9024
-    name = 'rating engine address'
 
-class RatingEngineAddresses(list):
-    def __new__(cls, engines):
-        engines = engines.split()
-        engines = [RatingEngineAddress(engine) for engine in engines]
-        return engines
+
+class ThorNodeConfig(ConfigSection):
+    __cfgfile__ = configuration_filename
+    __section__ = 'ThorNetwork'
+
+    enabled = False
+
+
+class RatingConfig(ConfigSection):
+    __cfgfile__ = configuration_filename
+    __section__ = 'CDRTool'
+    timeout = 500
 
 class TimeLimit(int):
     """A positive time limit (in seconds) or None"""
@@ -47,11 +49,6 @@ class TimeLimit(int):
             raise ValueError("invalid time limit value: %r. should be positive." % value)
         return limit
 
-class RatingConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
-    __section__ = 'CDRTool'
-    address = ConfigSetting(type=RatingEngineAddresses, value=[])
-    timeout = 500
 
 class CallControlConfig(ConfigSection):
     __cfgfile__ = configuration_filename
@@ -59,16 +56,11 @@ class CallControlConfig(ConfigSection):
     prepaid_limit = ConfigSetting(type=TimeLimit, value=None)
     limit = ConfigSetting(type=TimeLimit, value=None)
 
-if not RatingConfig.address:
-    try:
-        RatingConfig.address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1])
-    except Exception, e:
-        log.fatal('Cannot resolve hostname %s' % ('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1]))
-
 
 class RatingError(Exception): pass
 class RatingEngineError(RatingError): pass
 class RatingEngineTimeoutError(TimeoutError): pass
+
 
 class RatingRequest(str):
     def __init__(self, command, reliable=True, **kwargs):
@@ -76,19 +68,22 @@ class RatingRequest(str):
         self.reliable = reliable
         self.kwargs = kwargs
         self.deferred = defer.Deferred()
+
     def __new__(cls, command, reliable=True, **kwargs):
-        reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name,value) for name, value in kwargs.items())) or '')
+        reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in kwargs.items())) or '')
         obj = str.__new__(cls, reqstr)
         return obj
 
+
 class RatingEngineProtocol(LineOnlyReceiver):
     delimiter = '\n\n'
+
     def __init__(self):
         self.connected = False
         self.__request = None
         self.__timeout_call = None
         self._request_queue = deque()
-    
+
     def connectionMade(self):
         log.info("Connected to Rating Engine at %s:%d" % (self.transport.getPeer().host, self.transport.getPeer().port))
         self.connected = True
@@ -184,7 +179,6 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 totalcost = 0
             return timelimit, totalcost
 
-
     def _send_next_request(self):
         if self.connected:
             self.__request = self._request_queue.popleft()
@@ -252,6 +246,14 @@ class RatingEngineFactory(ReconnectingClientFactory):
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
 
+class DummyRatingEngine(object):
+    def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit, reliable=True):
+        return defer.fail(failure.Failure(RatingEngineError("Connection with the Rating Engine not yet established")))
+
+    def debitBalance(self, call, reliable=True):
+        return defer.fail(failure.Failure(RatingEngineError("Connection with the Rating Engine not yet established")))
+
+
 class RatingEngine(object):
     def __init__(self, address):
         self.address = address
@@ -281,21 +283,21 @@ class RatingEngine(object):
                 log.debug("Saving request to be requeued later: %s" % (req,))
                 self.__unsent_req.appendleft(req)
         self.connection = None
-    
+
     def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit, reliable=True):
         max_duration = max_duration or CallControlConfig.limit or 36000
         args = {}
         if call.inprogress:
             args['State'] = 'Connected'
         req = RatingRequest('MaxSessionTime', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
-                          Gateway=call.sourceip, Duration=max_duration,
-                          Application=call.sip_application, **args)
+                            Gateway=call.sourceip, Duration=max_duration,
+                            Application=call.sip_application, **args)
         if self.connection is not None:
             return self.connection.protocol.send_request(req).deferred
         else:
             self.__unsent_req.append(req)
             return req.deferred
-    
+
     def debitBalance(self, call, reliable=True):
         req = RatingRequest('DebitBalance', reliable=reliable, CallId=call.callid, From=call.billingParty, To=call.ruri,
                       Gateway=call.sourceip, Duration=call.duration,
@@ -307,17 +309,31 @@ class RatingEngine(object):
             return req.deferred
 
 
+class RatingEngineAddress(EndpointAddress):
+    default_port = 9024
+    name = 'rating engine address'
+
+
 class RatingEngineConnections(object):
     __metaclass__ = Singleton
 
     def __init__(self):
-        self.connections = [RatingEngine(engine) for engine in RatingConfig.address]
         self.user_connections = {}
+        if not ThorNodeConfig.enabled:
+            from callcontrol.rating.backends.opensips import OpensipsBackend
+            self.backend = OpensipsBackend()
+        else:
+            from callcontrol.rating.backends.sipthor import SipthorBackend
+            self.backend = SipthorBackend()
 
     @staticmethod
     def getConnection(call=None):
         engines = RatingEngineConnections()
-        conn = random.choice(engines.connections)
+        try:
+            conn = random.choice(engines.backend.connections)
+        except IndexError:
+            return DummyRatingEngine()
+
         if call is None:
             return conn
         return engines.user_connections.setdefault(call.billingParty, conn)
@@ -329,5 +345,5 @@ class RatingEngineConnections(object):
             pass
 
     def shutdown(self):
-        for engine in self.connections:
-            engine.shutdown()
+        return defer.maybeDeferred(self.backend.shutdown)
+

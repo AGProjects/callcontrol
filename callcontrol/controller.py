@@ -322,12 +322,12 @@ class CallControlServer(object):
    #      log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
 
     def run(self):
-        ## Do the startup stuff
-        self.on_startup()
+        ## Add a callback for the startup/shutdown stuff
+        reactor.addSystemEventTrigger('before', 'startup', self.on_startup)
+        reactor.addSystemEventTrigger('before', 'shutdown', self.on_shutdown)
         ## And start reactor
         reactor.run()
         ## And do the shutdown
-        self.on_shutdown()
 
     def stop(self):
         reactor.stop()
@@ -355,17 +355,20 @@ class CallControlServer(object):
         self.engines = RatingEngineConnections()
 
     def on_shutdown(self):
+        should_close = []
         if self.listening is not None:
             self.listening.stopListening()
         if self.engines is not None:
-            self.engines.shutdown()
+            should_close.append(self.engines.shutdown())
         if self.monitor is not None:
             self.monitor.shutdown()
         if self.db is not None:
-            self.db.close()
-        self._save_calls()
+            should_close.append(self.db.close())
+        d = defer.DeferredList(should_close)
+        d.addBoth(self._save_calls)
+        return d
 
-    def _save_calls(self):
+    def _save_calls(self, result):
         if self.calls:
             log.info('Saving calls')
             calls_file = '%s/%s' % (process.runtime_directory, backup_calls_file)
