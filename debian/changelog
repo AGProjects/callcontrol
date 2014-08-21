@@ -1,3 +1,12 @@
+callcontrol (2.1.0) unstable; urgency=low
+
+  * Refactored rating enigine connection and skip lookup on postpaid
+  * Fixed sip_application subtype when it is not set
+  * Fixed removing chosen rating engine for each billing party
+  * Refactored rating to support multiple backends
+
+ -- Tijmen de Mes <tijmen@ag-projects.com>  Thu, 21 Aug 2014 15:40:24 +0200
+
 callcontrol (2.0.16) unstable; urgency=low
 
   * Fixed checking call limit in certain cases
