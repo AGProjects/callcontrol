@@ -27,6 +27,6 @@ setup(name         = "callcontrol",
           "Operating System :: OS Independent",
           "Programming Language :: Python"
       ],
-      packages     = ['callcontrol'],
+      packages     = ['callcontrol','callcontrol.rating','callcontrol.rating.backends'],
       scripts      = ['call-control']
 )
