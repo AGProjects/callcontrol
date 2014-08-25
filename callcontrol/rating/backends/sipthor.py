@@ -3,7 +3,7 @@
 # This module is proprietary to AG Projects. Use of this module by third
 # parties is not supported.
 
-
+from application.version import Version
 from application.configuration import ConfigSection, ConfigSetting
 from application.system import host
 from application import log
@@ -12,6 +12,7 @@ from application.python.types import Singleton
 from gnutls.interfaces.twisted import X509Credentials
 from gnutls.constants import COMP_DEFLATE, COMP_LZO, COMP_NULL
 
+from thor import __version__ as thor_version
 from thor.eventservice import EventServiceClient, ThorEvent
 from thor.entities import ThorEntitiesRoleMap, GenericThorEntity as ThorEntity
 
@@ -20,6 +21,9 @@ from callcontrol.rating import RatingEngine, RatingEngineAddress
 from callcontrol import configuration_filename, __version__
 
 from twisted.internet import defer, reactor
+
+if Version(thor_version) < '1.2.1':
+    raise RuntimeError
 
 
 class ThorNodeConfig(ConfigSection):
