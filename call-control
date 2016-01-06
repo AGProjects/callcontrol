@@ -104,7 +104,7 @@ if __name__ == '__main__':
     from callcontrol.controller import CallControlServer
 
     if not options.fork:
-        from application.debug.memory import *
+        from application.debug.memory import memory_dump
 
     try:
         cserver = CallControlServer()
