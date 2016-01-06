@@ -1,3 +1,10 @@
+callcontrol (2.2.0) unstable; urgency=medium
+
+  * Only buold Debiacn package for Python >= 2.7 << 3
+  * Removed runtime dependency check
+
+ -- Saul Ibarra <saul@ag-projects.com>  Wed, 06 Jan 2016 14:26:44 +0100
+
 callcontrol (2.1.0) unstable; urgency=low
 
   * Refactored rating enigine connection and skip lookup on postpaid
