@@ -7,7 +7,6 @@
 
 def send_command(command, **kwargs):
     import socket
-    import select
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect('%s/socket' % process.runtime_directory)

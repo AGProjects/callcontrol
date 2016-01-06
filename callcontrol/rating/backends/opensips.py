@@ -2,7 +2,6 @@
 #
 import socket
 
-from application.configuration.datatypes import EndpointAddress
 from application.configuration import ConfigSection, ConfigSetting
 from application.system import host
 from application import log
