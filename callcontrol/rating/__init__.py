@@ -1,5 +1,3 @@
-# Copyright (C) 2005-2014 AG Projects. See LICENSE for details.
-#
 
 """Rating engine interface implementation."""
 

@@ -1,5 +1,4 @@
-# Copyright (C) 2014 AG Projects. See LICENSE for details.
-#
+
 import socket
 
 from application.configuration import ConfigSection, ConfigSetting

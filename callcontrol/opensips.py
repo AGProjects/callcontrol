@@ -1,5 +1,3 @@
-# Copyright (C) 2006-2009 AG Projects.
-#
 
 """The OpenSIPS Management Interface"""
 

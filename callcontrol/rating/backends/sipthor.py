@@ -1,7 +1,3 @@
-# Copyright (C) 2014 AG-Projects.
-#
-# This module is proprietary to AG Projects. Use of this module by third
-# parties is not supported.
 
 from application.version import Version
 from application.configuration import ConfigSection, ConfigSetting

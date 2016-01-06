@@ -1,5 +1,3 @@
-# Copyright (C) 2005-2010 AG Projects. See LICENSE for details.
-#
 
 """
 Implementation of Call objects used to store call information and manage

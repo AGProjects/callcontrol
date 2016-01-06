@@ -1,5 +1,3 @@
-# Copyright (C) 2005-2009 AG Projects. See LICENSE for details.
-#
 
 """RadiusDatabase related API"""
 
