@@ -32,7 +32,7 @@ if __name__ == '__main__':
     from application import log
     import callcontrol
 
-   
+
     name = 'call-control'
     fullname = 'SIP call-control'
     description = 'Implementation of call-control for SIP'
@@ -54,12 +54,6 @@ if __name__ == '__main__':
                       help="terminate an on-going session",
                       metavar="CALLID")
     (options, args) = parser.parse_args()
-
-    try:
-        callcontrol.dependencies.check()
-    except Exception, e:
-        log.fatal(str(e))
-        sys.exit(1)
 
     pid_file = options.pid_file
 
