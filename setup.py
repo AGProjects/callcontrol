@@ -9,8 +9,9 @@ def get_version():
 
 setup(name         = "callcontrol",
       version      = get_version(),
-      author       = "Dan Pascu",
-      author_email = "dan@ag-projects.com",
+      author       = "AG Projects",
+      author_email = "support@ag-projects.com",
+      url          = "http://callcontrol.ag-projects.com",
       description  = "SIP call control",
       license      = "GPL",
       platforms    = ["Platform Independent"],
