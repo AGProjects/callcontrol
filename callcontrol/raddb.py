@@ -92,63 +92,63 @@ class RadiusDatabase(object):
             reactor.callFromThread(task.deferred.errback, failure.Failure(e))
 
     def _RD_terminated(self, task):
+        calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
+        if not calls:
+            return {}
+        ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
+        query = """SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
+                          %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
+                   FROM   %(table)s
+                   WHERE  %(session_id_field)s IN %(ids)s AND
+                          (%(stop_info_field)s IS NOT NULL OR
+                           %(stop_time_field)s IS NOT NULL)""" % {'session_id_field': RadiusDatabaseConfig.sessionIdField,
+                                                                  'duration_field': RadiusDatabaseConfig.durationField,
+                                                                  'from_tag_field': RadiusDatabaseConfig.fromTagField,
+                                                                  'to_tag_field': RadiusDatabaseConfig.toTagField,
+                                                                  'stop_info_field': RadiusDatabaseConfig.stopInfoField,
+                                                                  'stop_time_field': RadiusDatabaseConfig.stopTimeField,
+                                                                  'table': RadiusDatabaseConfig.table.normalized,
+                                                                  'ids': ids}
         try:
-            calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
-            if not calls:
-                return {}
-            ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
-            query = """SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
-                              %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
-                       FROM   %(table)s
-                       WHERE  %(session_id_field)s IN %(ids)s AND
-                              (%(stop_info_field)s IS NOT NULL OR
-                               %(stop_time_field)s IS NOT NULL)""" % {'session_id_field': RadiusDatabaseConfig.sessionIdField,
-                                                                      'duration_field': RadiusDatabaseConfig.durationField,
-                                                                      'from_tag_field': RadiusDatabaseConfig.fromTagField,
-                                                                      'to_tag_field': RadiusDatabaseConfig.toTagField,
-                                                                      'stop_info_field': RadiusDatabaseConfig.stopInfoField,
-                                                                      'stop_time_field': RadiusDatabaseConfig.stopTimeField,
-                                                                      'table': RadiusDatabaseConfig.table.normalized,
-                                                                      'ids': ids}
             rows = self.conn.queryAll(query)
-            def find(row, calls):
-                try:
-                    call = calls[row[0]]
-                except KeyError:
-                    return False
-                return call.fromtag==row[2] and call.totag==row[3]
-            return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
         except Exception, e:
             log.error("Query failed: %s" % query)
             raise RadiusDatabaseError("Exception while querying for terminated calls %s." % e)
+        def find(row, calls):
+            try:
+                call = calls[row[0]]
+            except KeyError:
+                return False
+            return call.fromtag==row[2] and call.totag==row[3]
+        return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
 
     def _RD_timedout(self, task):
+        calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
+        if not calls:
+            return {}
+        ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
+        query = '''SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
+                          %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
+                   FROM   %(table)s
+                   WHERE  %(session_id_field)s IN %(ids)s AND
+                          %(media_info_field)s = 'timeout' AND
+                          %(stop_info_field)s IS NULL''' % {'session_id_field': RadiusDatabaseConfig.sessionIdField,
+                                                            'duration_field': RadiusDatabaseConfig.durationField,
+                                                            'from_tag_field': RadiusDatabaseConfig.fromTagField,
+                                                            'to_tag_field': RadiusDatabaseConfig.toTagField,
+                                                            'media_info_field': RadiusDatabaseConfig.mediaInfoField,
+                                                            'stop_info_field': RadiusDatabaseConfig.stopInfoField,
+                                                            'table': RadiusDatabaseConfig.table.normalized,
+                                                            'ids': ids}
         try:
-            calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
-            if not calls:
-                return {}
-            ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
-            query = '''SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
-                              %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
-                       FROM   %(table)s
-                       WHERE  %(session_id_field)s IN %(ids)s AND
-                              %(media_info_field)s = 'timeout' AND
-                              %(stop_info_field)s IS NULL''' % {'session_id_field': RadiusDatabaseConfig.sessionIdField,
-                                                                'duration_field': RadiusDatabaseConfig.durationField,
-                                                                'from_tag_field': RadiusDatabaseConfig.fromTagField,
-                                                                'to_tag_field': RadiusDatabaseConfig.toTagField,
-                                                                'media_info_field': RadiusDatabaseConfig.mediaInfoField,
-                                                                'stop_info_field': RadiusDatabaseConfig.stopInfoField,
-                                                                'table': RadiusDatabaseConfig.table.normalized,
-                                                                'ids': ids}
             rows = self.conn.queryAll(query)
-            def find(row, calls):
-                try:
-                    call = calls[row[0]]
-                except KeyError:
-                    return False
-                return call.fromtag==row[2] and call.totag==row[3]
-            return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
         except Exception, e:
             log.error("Query failed: %s" % query)
             raise RadiusDatabaseError("Exception while querying for timedout calls %s." % e)
+        def find(row, calls):
+            try:
+                call = calls[row[0]]
+            except KeyError:
+                return False
+            return call.fromtag==row[2] and call.totag==row[3]
+        return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
