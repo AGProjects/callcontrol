@@ -148,7 +148,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
             elif type == 'postpaid':
                 prepaid = False
             else:
-                raise ValueError("prepaid must be either True or False: %s" % prepaid)
+                raise ValueError("prepaid must be either True or False: %s" % type)
         else:
             prepaid = limit is not None
         return limit, prepaid
