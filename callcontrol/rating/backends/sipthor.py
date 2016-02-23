@@ -5,8 +5,7 @@ from application.system import host
 from application import log
 from application.python.types import Singleton
 
-from gnutls.interfaces.twisted import X509Credentials
-from gnutls.constants import COMP_DEFLATE, COMP_LZO, COMP_NULL
+from gnutls.interfaces.twisted import TLSContext, X509Credentials
 
 from thor import __version__ as thor_version
 from thor.eventservice import EventServiceClient, ThorEvent
@@ -46,8 +45,8 @@ class CallcontrolNode(EventServiceClient):
         self.shutdown_message = ThorEvent('Thor.Leave', self.node.id)
         credentials = X509Credentials(ThorNodeConfig.certificate, ThorNodeConfig.private_key, [ThorNodeConfig.ca])
         credentials.verify_peer = True
-        credentials.session_params.compressions = (COMP_LZO, COMP_DEFLATE, COMP_NULL)
-        EventServiceClient.__init__(self, ThorNodeConfig.domain, credentials)
+        tls_context = TLSContext(credentials)
+        EventServiceClient.__init__(self, ThorNodeConfig.domain, tls_context)
 
     def publish(self, event):
         self._publish(event)
