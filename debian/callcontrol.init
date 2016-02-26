@@ -20,26 +20,31 @@ OPTIONS=
 
 test -f $DAEMON || exit 0
 
-set -e
+. /lib/lsb/init-functions
+
+start() {
+    echo -n "Starting $DESC: $NAME"
+    start-stop-daemon --start --quiet --pidfile $PIDFILE \
+            --exec $DAEMON -- $OPTIONS || echo -n " already running"
+    echo "."
+}
+
+stop() {
+    echo -n "Stopping $DESC: $NAME"
+    start-stop-daemon --oknodo --stop --quiet --retry=TERM/15/KILL/5 --pidfile $PIDFILE
+    echo "."
+}
 
 case "$1" in
   start)
-	echo -n "Starting $DESC: $NAME"
-	start-stop-daemon --start --quiet --pidfile $PIDFILE \
-		--exec $DAEMON -- $OPTIONS || echo -n " already running"
-	echo "."
+        start
 	;;
   stop)
-	echo -n "Stopping $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --quiet --pidfile $PIDFILE
-	echo "."
+        stop
 	;;
   restart|force-reload)
-	echo -n "Restarting $DESC: $NAME"
-	start-stop-daemon --oknodo --stop --quiet --pidfile $PIDFILE
-	start-stop-daemon --start --quiet --pidfile $PIDFILE \
-		--exec $DAEMON -- $OPTIONS
-	echo "."
+        stop
+        start
 	;;
   sessions)
     $DAEMON "--debug=sessions"
