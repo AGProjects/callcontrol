@@ -1,10 +1,11 @@
-callcontrol (2.2.1) UNRELEASED; urgency=medium
+callcontrol (2.2.1) unstable; urgency=medium
 
   * Fix use of potentially unbound variable
   * Adapt to changes in SIPThor API
   * Reduce try-except block to the needed section
+  * Improved Debian init file
 
- -- Saul Ibarra <saul@ag-projects.com>  Tue, 23 Feb 2016 19:59:52 +0100
+ -- Saul Ibarra <saul@ag-projects.com>  Thu, 10 Mar 2016 12:26:46 +0100
 
 callcontrol (2.2.0) unstable; urgency=medium
 
