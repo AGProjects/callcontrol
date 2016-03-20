@@ -17,7 +17,7 @@ from callcontrol import configuration_filename, __version__
 
 from twisted.internet import defer, reactor
 
-if Version.parse(thor_version) < '1.1.21':
+if Version.parse(thor_version) < Version.parse('1.1.21'):
     raise RuntimeError('Thor version is smaller the 1.1.21 (%s)' % thor_version)
 
 
