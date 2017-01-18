@@ -1,3 +1,10 @@
+callcontrol (2.2.2) unstable; urgency=medium
+
+  * Fixed version comparison
+  * Updated maintainer
+
+ -- Dan Pascu <dan@ag-projects.com>  Wed, 18 Jan 2017 23:46:33 +0200
+
 callcontrol (2.2.1) unstable; urgency=medium
 
   * Fix use of potentially unbound variable
