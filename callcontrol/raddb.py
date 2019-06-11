@@ -11,7 +11,7 @@ from application import log
 from twisted.internet import defer, reactor, threads
 from twisted.python import failure
 
-from callcontrol import configuration_filename
+from callcontrol import configuration_file
 
 class RadacctTable(str):
     """A radacct table name"""
@@ -20,8 +20,9 @@ class RadacctTable(str):
         return time.strftime(self)
 
 class RadiusDatabaseConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'RadiusDatabase'
+
     user           = ''
     password       = ''
     host           = 'localhost'

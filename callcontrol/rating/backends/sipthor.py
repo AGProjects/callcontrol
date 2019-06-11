@@ -13,7 +13,7 @@ from thor.entities import ThorEntitiesRoleMap, GenericThorEntity as ThorEntity
 
 from callcontrol.tls import Certificate, PrivateKey
 from callcontrol.rating import RatingEngine, RatingEngineAddress
-from callcontrol import configuration_filename, __version__
+from callcontrol import configuration_file, __version__
 
 from twisted.internet import defer, reactor
 
@@ -22,7 +22,7 @@ if Version.parse(thor_version) < Version.parse('1.1.21'):
 
 
 class ThorNodeConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'ThorNetwork'
 
     enabled = False

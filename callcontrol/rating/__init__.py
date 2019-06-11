@@ -15,7 +15,7 @@ from twisted.internet import reactor, defer
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.python import failure
 
-from callcontrol import configuration_filename
+from callcontrol import configuration_file
 
 ##
 ## Rating engine configuration
@@ -23,16 +23,18 @@ from callcontrol import configuration_filename
 
 
 class ThorNodeConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'ThorNetwork'
 
     enabled = False
 
 
 class RatingConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'CDRTool'
+
     timeout = 500
+
 
 class TimeLimit(int):
     """A positive time limit (in seconds) or None"""
@@ -49,8 +51,9 @@ class TimeLimit(int):
 
 
 class CallControlConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'CallControl'
+
     prepaid_limit = ConfigSetting(type=TimeLimit, value=None)
     limit = ConfigSetting(type=TimeLimit, value=None)
 

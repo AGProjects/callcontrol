@@ -14,11 +14,11 @@ from twisted.internet import reactor, defer
 from twisted.internet.protocol import DatagramProtocol
 from twisted.python.failure import Failure
 
-from callcontrol import configuration_filename
+from callcontrol import configuration_file
 
 
 class OpenSIPSConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'OpenSIPS'
 
     socket_path = '/var/run/opensips/socket'

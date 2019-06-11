@@ -5,7 +5,7 @@ from application.configuration import ConfigSection, ConfigSetting
 from application.system import host
 from application import log
 
-from callcontrol import configuration_filename
+from callcontrol import configuration_file
 from callcontrol.rating import RatingEngine, RatingEngineAddress
 
 ##
@@ -21,8 +21,9 @@ class RatingEngineAddresses(list):
 
 
 class RatingConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'CDRTool'
+
     address = ConfigSetting(type=RatingEngineAddresses, value=[])
     timeout = 500
 

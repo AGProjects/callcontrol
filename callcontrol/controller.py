@@ -20,7 +20,7 @@ from callcontrol.scheduler import RecurrentCall, KeepRunning
 from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
 from callcontrol.sip import Call
 from callcontrol.rating import RatingEngineConnections
-from callcontrol import configuration_filename, backup_calls_file
+from callcontrol import configuration_file, backup_calls_file
 
 
 class TimeLimit(int):
@@ -51,8 +51,9 @@ class TimeoutDetection(str):
         return str.__new__(cls, value.lower())
 
 class CallControlConfig(ConfigSection):
-    __cfgfile__ = configuration_filename
+    __cfgfile__ = configuration_file
     __section__ = 'CallControl'
+
     socket            = "%s/socket" % process.runtime_directory
     group             = 'opensips'
     limit             = ConfigSetting(type=TimeLimit, value=None)
