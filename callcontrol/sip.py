@@ -13,7 +13,7 @@ from twisted.internet.error import AlreadyCalled
 from twisted.internet import reactor, defer
 
 from callcontrol.rating import RatingEngineConnections
-from callcontrol.opensips import DialogID, ManagementInterface
+from callcontrol.opensips import ManagementInterface
 
 
 class CallError(Exception): pass
@@ -218,7 +218,7 @@ class Call(Structure):
     def start(self, request):
         assert self.__initialized, "Trying to start an unitialized call"
         if self.starttime is None:
-            self.dialogid = DialogID(request.dialogid)
+            self.dialogid = request.dialogid
             self.starttime = time.time()
             if self.timer is not None:
                 log.info("Call id %s of %s to %s started for maximum %d seconds" % (self.callid, self.user, self.ruri, self.timelimit))
