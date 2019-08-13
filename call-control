@@ -51,8 +51,6 @@ if __name__ == '__main__':
                       metavar="CALLID")
     (options, args) = parser.parse_args()
 
-    pid_file = options.pid_file
-
     process.system_config_directory = config_directory
     try:
         process.runtime_directory = runtime_directory
@@ -89,7 +87,7 @@ if __name__ == '__main__':
 
     if options.fork:
         try:
-            process.daemonize(pid_file)
+            process.daemonize(options.pid_file)
         except ProcessError, e:
             log.fatal(str(e))
             sys.exit(1)
