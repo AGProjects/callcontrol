@@ -329,7 +329,7 @@ class CallControlServer(object):
         reactor.stop()
 
     def on_startup(self):
-        ## First set up listening on the unix socket
+        # First set up listening on the unix socket
         try:
             gid = grp.getgrnam(self.group)[2]
             mode = 0660
@@ -337,7 +337,7 @@ class CallControlServer(object):
             gid = -1
             mode = 0666
         self.listening = reactor.listenUNIX(address=self.path, factory=CallControlFactory(self))
-        ## Make it writable only to the SIP proxy group members
+        # Make it writable only to the SIP proxy group members
         try:
             os.chown(self.path, -1, gid)
             os.chmod(self.path, mode)
@@ -345,9 +345,9 @@ class CallControlServer(object):
             log.warn("Couldn't set access rights for %s" % self.path)
             log.warn("OpenSIPS may not be able to communicate with us!")
 
-        ## Then setup the CallsMonitor
+        # Then setup the CallsMonitor
         self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
-        ## Open the connection to the rating engines
+        # Open the connection to the rating engines
         self.engines = RatingEngineConnections()
 
     def on_shutdown(self):
