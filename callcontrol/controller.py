@@ -321,12 +321,9 @@ class CallControlServer(object):
    #      log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
 
     def run(self):
-        ## Add a callback for the startup/shutdown stuff
         reactor.addSystemEventTrigger('before', 'startup', self.on_startup)
         reactor.addSystemEventTrigger('before', 'shutdown', self.on_shutdown)
-        ## And start reactor
         reactor.run()
-        ## And do the shutdown
 
     def stop(self):
         reactor.stop()
