@@ -53,7 +53,7 @@ class CallControlConfig(ConfigSection):
     __cfgfile__ = configuration_file
     __section__ = 'CallControl'
 
-    socket = "%s/socket" % process.runtime_directory
+    socket = process.runtime.file('socket')
     group = 'opensips'
     limit = ConfigSetting(type=TimeLimit, value=None)
     timeout = 24*60*60  # timeout calls that are stale for more than 24 hours.
@@ -369,7 +369,7 @@ class CallControlServer(object):
     def _save_calls(self, result):
         if self.calls:
             log.info('Saving calls')
-            calls_file = '%s/%s' % (process.runtime_directory, backup_calls_file)
+            calls_file = process.runtime.file(backup_calls_file)
             try:
                 f = open(calls_file, 'w')
             except:
@@ -402,7 +402,7 @@ class CallControlServer(object):
             self.calls = {}
 
     def _restore_calls(self):
-        calls_file = '%s/%s' % (process.runtime_directory, backup_calls_file)
+        calls_file = process.runtime.file(backup_calls_file)
         try:
             f = open(calls_file, 'r')
         except:

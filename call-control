@@ -2,11 +2,12 @@
 
 """Implementation of a call controller for OpenSIPS."""
 
+
 def send_command(command, **kwargs):
     import socket
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect('%s/socket' % process.runtime_directory)
+    sock.connect(process.runtime.file('socket'))
 
     sock.sendall('%s\r\n' % command + '\r\n'.join(['%s: %s' % (key, value) for key, value in kwargs.items()]) + '\r\n\r\n')
     response = ''
@@ -32,17 +33,17 @@ if __name__ == '__main__':
     fullname = 'SIP call-control engine'
     description = 'Implementation of a call-control engine for SIP'
 
-    config_directory = '/etc/callcontrol'
-    runtime_directory = '/var/run/callcontrol'
-    default_pid = "%s/%s.pid" % (runtime_directory, name)
+    process.configuration.user_directory = None
+    process.configuration.subdirectory = 'callcontrol'
+    process.runtime.subdirectory = 'callcontrol'
 
     default_pid = process.runtime.file('{}.pid'.format(name))
 
     parser = OptionParser(version="%%prog %s" % callcontrol.__version__)
     parser.add_option("--no-fork", action="store_false", dest="fork", default=True,
                       help="run the process in the foreground")
-    parser.add_option("--pid", dest="pid_file", default='/var/run/callcontrol/call-control.pid',
-                      help="pid file (/var/run/callcontrol/call-control.pid)", 
+    parser.add_option("--pid", dest="pid_file", default=default_pid,
+                      help="pid file when forking ({})".format(default_pid),
                       metavar="FILE")
     parser.add_option("--debug", dest="debug", default=None,
                       help="get information about a currently running call-control daemon",
@@ -52,10 +53,11 @@ if __name__ == '__main__':
                       metavar="CALLID")
     (options, args) = parser.parse_args()
 
-    process.system_config_directory = config_directory
+    log.Formatter.prefix_format = '{record.levelname:<8s} '
+
     try:
-        process.runtime_directory = runtime_directory
-    except ProcessError, e:
+        process.runtime.create_directory()
+    except ProcessError as e:
         log.critical('Cannot start %s: %s', fullname, e)
         sys.exit(1)
 
