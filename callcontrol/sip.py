@@ -281,7 +281,7 @@ class Call(Structure):
             elif self.expired:
                 self.duration = self.timelimit
                 if duration > self.timelimit + 10:
-                    log.warn("Time difference between sending BYEs and actual closing is > 10 seconds")
+                    log.warning('Time difference between sending BYEs and actual closing is > 10 seconds')
             else:
                 self.duration = duration
         if self.prepaid and not self.locked and self.timelimit > 0:

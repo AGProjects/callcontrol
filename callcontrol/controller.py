@@ -145,7 +145,8 @@ class CallControlProtocol(LineOnlyReceiver):
         except InvalidRequestError, e:
             self._send_error_reply(failure.Failure(e))
         else:
-#            log.debug("Got request: %s" % str(req)) #DEBUG
+            # log.debug('Got request: %s', req)
+
             def _unknown_handler(req):
                 req.deferred.errback(failure.Failure(CommandError(req)))
             try:
@@ -159,12 +160,12 @@ class CallControlProtocol(LineOnlyReceiver):
         self.line_buf = []
 
     def _send_reply(self, msg):
-#        log.debug('Sent reply: %s' % msg) #DEBUG
+        # log.debug('Sent reply: %s', msg)
         self.sendLine(msg)
 
     def _send_error_reply(self, fail):
         log.error(fail.value)
-#        log.debug("Sent 'Error' reply") #DEBUG
+        # log.debug("Sent 'Error' reply")
         self.sendLine('Error')
 
     def _CC_init(self, req):
@@ -176,7 +177,7 @@ class CallControlProtocol(LineOnlyReceiver):
                 req.deferred.callback('Error')
                 return
             self.factory.application.calls[req.callid] = call
-#            log.debug("Call id %s added to list of controlled calls" % (call.callid)) #DEBUG
+            # log.debug('Call id %s added to list of controlled calls', call.callid)
         else:
             if call.token != req.call_token:
                 log.error("Call id %s is duplicated" % call.callid)
@@ -319,7 +320,7 @@ class CallControlServer(object):
             if not user_calls:
                 self.users.pop(call.billingParty, None)
                 self.engines.remove_user(call.billingParty)
-   #      log.debug("Call id %s removed from the list of controlled calls" % callid) #DEBUG
+        # log.debug('Call id %s removed from the list of controlled calls', callid)
 
     def run(self):
         reactor.addSystemEventTrigger('before', 'startup', self.on_startup)
@@ -343,8 +344,8 @@ class CallControlServer(object):
             os.chown(self.path, -1, gid)
             os.chmod(self.path, mode)
         except OSError:
-            log.warn("Couldn't set access rights for %s" % self.path)
-            log.warn("OpenSIPS may not be able to communicate with us!")
+            log.warning("Couldn't set access rights for %s" % self.path)
+            log.warning("OpenSIPS may not be able to communicate with us!")
 
         # Then setup the CallsMonitor
         self.monitor = CallsMonitor(CallControlConfig.checkInterval, self)
@@ -388,8 +389,8 @@ class CallControlServer(object):
                 try:
                     try:
                         cPickle.dump(self.calls, f)
-                    except Exception, why:
-                        log.warn("Failed to dump call list: %s" % why)
+                    except Exception as e:
+                        log.warning('Failed to dump call list: %s', e)
                         failed_dump = True
                 finally:
                     f.close()
@@ -409,8 +410,8 @@ class CallControlServer(object):
         else:
             try:
                 self.calls = cPickle.load(f)
-            except Exception, why:
-                log.warn("Failed to load calls saved in the previous session: %s" % why)
+            except Exception as e:
+                log.warning('Failed to load calls saved in the previous session: %s', e)
             f.close()
             try:    os.unlink(calls_file)
             except: pass

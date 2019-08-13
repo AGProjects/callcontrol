@@ -36,7 +36,7 @@ class OpensipsBackend(object):
             try:
                 RatingConfig.address = RatingEngineAddresses('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1])
             except Exception:
-                log.fatal('Cannot resolve hostname %s' % ('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1]))
+                log.critical('Cannot resolve hostname %s' % ('cdrtool.' + socket.gethostbyaddr(host.default_ip)[0].split('.', 1)[1]))
 
         for engine in RatingConfig.address:
             self.connections.append(RatingEngine(engine))

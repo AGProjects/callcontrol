@@ -108,13 +108,13 @@ class RatingEngineProtocol(LineOnlyReceiver):
         self.transport.loseConnection(RatingEngineTimeoutError())
 
     def lineReceived(self, line):
-#        log.debug("Got reply from rating engine: %s" % line) #DEBUG
+        # log.debug('Got reply from rating engine: %s', line)
         if not line:
             return
         if self.__timeout_call is not None:
             self.__timeout_call.cancel()
         if self.__request is None:
-            log.warn("Got reply for unexisting request: %s" % line)
+            log.warning('Got reply for non-existing request: %s' % line)
             return
         try:
             self._respond(getattr(self, '_PE_%s' % self.__request.command.lower())(line))
@@ -165,10 +165,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
             raise ValueError("Empty reply from rating engine")
         if result not in valid_answers:
             log.error("Invalid reply from rating engine: `%s'" % lines[0].strip())
-            log.warn("Rating engine possible failed query: %s" % self.__request)
+            log.warning('Rating engine possible failed query: %s', self.__request)
             raise RatingEngineError('Invalid rating engine response')
         elif result == 'Failed':
-            log.warn("Rating engine failed query: %s" % self.__request)
+            log.warning('Rating engine failed query: %s', self.__request)
             raise RatingEngineError('Rating engine failed query')
         else:
             try:
@@ -185,7 +185,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
             self.__request = self._request_queue.popleft()
             self.sendLine(self.__request)
             self._set_timeout()
-#            log.debug("Sent request to rating engine: %s" % self.__request) #DEBUG
+            # log.debug('Sent request to rating engine: %s', self.__request)
         else:
             self.__request = None
 
@@ -199,7 +199,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 else:
                     req.deferred.errback(failure.Failure(RatingEngineError(result)))
             except defer.AlreadyCalledError:
-                log.debug("Request %s was already responded to" % str(req))
+                log.debug('Request %s was already responded to', req)
         if self._request_queue:
             self._send_next_request()
 
@@ -271,17 +271,17 @@ class RatingEngine(object):
         self.connection = connector.transport
         self.connection.protocol._request_queue.extend(self.__unsent_req)
         for req in self.__unsent_req:
-            log.debug("Requeueing request for the rating engine: %s" % (req,))
+            log.debug('Re-queueing request for the rating engine: %s', req)
         self.__unsent_req.clear()
 
     def connectionLost(self, connector, reason, protocol):
         while protocol._request_queue:
             req = protocol._request_queue.pop()
             if not req.reliable:
-                log.debug("Request is considered failed: %s" % (req,))
+                log.debug('Request is considered failed: %s', req)
                 req.deferred.errback(failure.Failure(RatingEngineError("Connection with the Rating Engine is down")))
             else:
-                log.debug("Saving request to be requeued later: %s" % (req,))
+                log.debug('Saving request to be requeued later: %s', req)
                 self.__unsent_req.appendleft(req)
         self.connection = None
 

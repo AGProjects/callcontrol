@@ -28,14 +28,15 @@ if __name__ == '__main__':
     from application import log
     import callcontrol
 
-
     name = 'call-control'
-    fullname = 'SIP call-control'
-    description = 'Implementation of call-control for SIP'
+    fullname = 'SIP call-control engine'
+    description = 'Implementation of a call-control engine for SIP'
 
     config_directory = '/etc/callcontrol'
     runtime_directory = '/var/run/callcontrol'
     default_pid = "%s/%s.pid" % (runtime_directory, name)
+
+    default_pid = process.runtime.file('{}.pid'.format(name))
 
     parser = OptionParser(version="%%prog %s" % callcontrol.__version__)
     parser.add_option("--no-fork", action="store_false", dest="fork", default=True,
@@ -55,7 +56,7 @@ if __name__ == '__main__':
     try:
         process.runtime_directory = runtime_directory
     except ProcessError, e:
-        log.fatal(str(e))
+        log.critical('Cannot start %s: %s', fullname, e)
         sys.exit(1)
 
     if options.debug is not None and options.terminate is not None:
@@ -69,7 +70,7 @@ if __name__ == '__main__':
         try:
             send_command('debug', show=options.debug, **dict([arg.split('=',1) for arg in args if arg.find('=') >= 0]))
         except Exception, e:
-            log.error('failed to complete debug command: %s' % e)
+            log.error('failed to complete debug command: %s', e)
             sys.exit(1)
         else:
             sys.exit(0)
@@ -89,11 +90,11 @@ if __name__ == '__main__':
         try:
             process.daemonize(options.pid_file)
         except ProcessError, e:
-            log.fatal(str(e))
+            log.critical('Cannot start %s: %s', fullname, e)
             sys.exit(1)
-        log.start_syslog(name)
+        log.use_syslog(name)
 
-    log.msg("Starting %s %s" % (fullname, callcontrol.__version__))
+    log.info('Starting %s %s', fullname, callcontrol.__version__)
 
     from callcontrol.controller import CallControlServer
 
@@ -103,14 +104,17 @@ if __name__ == '__main__':
     try:
         cserver = CallControlServer()
     except Exception, e:
-        log.error("failed to create SIP Call Control Server: %s" % e)
-        log.err()
+        log.critical('Could not create %s: %s', fullname, e)
+        if type(e) is not RuntimeError:
+            log.exception()
         sys.exit(1)
 
     try:
         cserver.run()
     except Exception, e:
-        log.error("failed to start SIP Call Control Server: %s" % e)
+        log.critical('Could not run %s: %s', fullname, e)
+        if type(e) is not RuntimeError:
+            log.exception()
 
     if not options.fork:
         memory_dump()

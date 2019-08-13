@@ -31,7 +31,7 @@ class Certificate(object):
             try:
                 return X509Certificate(file_content(value))
             except Exception, e:
-                log.warn("Certificate file '%s' could not be loaded: %s" % (value, str(e)))
+                log.warning("Certificate file '%s' could not be loaded: %s" % (value, e))
                 return None
         else:
             raise TypeError, 'value should be a string'
@@ -45,7 +45,7 @@ class PrivateKey(object):
             try:
                 return X509PrivateKey(file_content(value))
             except Exception, e:
-                log.warn("Private key file '%s' could not be loaded: %s" % (value, str(e)))
+                log.warning("Private key file '%s' could not be loaded: %s" % (value, e))
                 return None
         else:
             raise TypeError, 'value should be a string'

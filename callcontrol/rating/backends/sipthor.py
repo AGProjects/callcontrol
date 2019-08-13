@@ -103,7 +103,7 @@ class CallcontrolNode(EventServiceClient):
                 address = RatingEngineAddress(node)
                 self.rating_connections[address] = RatingEngine(address)
             plural = 's' if len(added_nodes) != 1 else ''
-            log.msg("Added rating node%s: %s" % (plural, ', '.join(added_nodes)))
+            log.info('Added rating node%s: %s', plural, ', '.join(added_nodes))
         if removed_nodes:
             for node in removed_nodes:
                 network.remove_node(node)
@@ -111,7 +111,7 @@ class CallcontrolNode(EventServiceClient):
                 self.rating_connections[address].shutdown()
                 del self.rating_connections[address]
             plural = 's' if len(removed_nodes) != 1 else ''
-            log.msg("Removed rating node%s: %s" % (plural, ', '.join(removed_nodes)))
+            log.info('Removed rating node%s: %s', plural, ', '.join(removed_nodes))
 
 
 class SipthorBackend(object):
