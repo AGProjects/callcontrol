@@ -1,12 +1,9 @@
-This package was debianized by Lucian Stanescu <luci@ag-projects.com> on
-Thu, 15 May 2008 11:36:37 +0200.
-
-Copyright 2006-2010 AG Projects
+Copyright 2006-2019 AG Projects
 http://ag-projects.com
 
 Authors: Dan Pascu, Lucian Stanescu
 
-License
+License: GPL-2
 
     This package is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
