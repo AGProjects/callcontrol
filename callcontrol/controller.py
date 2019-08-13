@@ -332,10 +332,10 @@ class CallControlServer(object):
         # First set up listening on the unix socket
         try:
             gid = grp.getgrnam(self.group)[2]
-            mode = 0660
+            mode = 0o660
         except (KeyError, IndexError):
             gid = -1
-            mode = 0666
+            mode = 0o666
         self.listening = reactor.listenUNIX(address=self.path, factory=CallControlFactory(self))
         # Make it writable only to the SIP proxy group members
         try:
