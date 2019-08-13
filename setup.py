@@ -25,6 +25,7 @@ setup(
         'Programming Language :: Python'
     ],
 
+    data_files=[('/etc/callcontrol', ['config.ini.sample'])],
     packages=['callcontrol', 'callcontrol.rating', 'callcontrol.rating.backends'],
     scripts=['call-control', 'call-control-cli']
 )
