@@ -146,7 +146,6 @@ address = cdrtool.hostname:9024
 [OpenSIPS]
 ; connection to OpenSIPS call_control module
 ; socket_path = /run/opensips/socket
-; max_connections = 10
 
 A more detailed sample configuration file is available in config.ini.sample.
 
