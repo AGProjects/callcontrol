@@ -13,3 +13,7 @@ override_dh_auto_install:
 	dh_auto_install
 	mv debian/callcontrol/etc/callcontrol/config.ini.sample debian/callcontrol/etc/callcontrol/config.ini
 
+override_dh_fixperms:
+	dh_fixperms
+	chmod 600 debian/callcontrol/etc/callcontrol/config.ini
+

@@ -1,4 +1,5 @@
-recursive-include debian  callcontrol.init callcontrol.manpages changelog compat control copyright dirs docs rules
+recursive-include debian  changelog compat control copyright dirs docs rules
+recursive-include debian  callcontrol.init callcontrol.manpages lintian-overrides
 recursive-include debian/source format
 recursive-include doc/man *.[1-9]
 prune debian/tmp
