@@ -11,7 +11,7 @@
 ; socket   Path to the UNIX socket where the controller receives
 ;          commands from OpenSIPS. This should match the value for
 ;          call_control_socket in opensips.cfg
-;          Default value: /var/run/callcontrol/socket
+;          Default value: /run/callcontrol/socket
 ;
 ; group    Put the socket in this group and make it group writable.
 ;          Default value: opensips
@@ -41,7 +41,7 @@
 ;                    OpenSIPS' dialog module to terminate a call that has timed
 ;                    out. Otherwise, set to `dialog'.
 ;
-;socket            = /var/run/callcontrol/socket
+;socket            = /run/callcontrol/socket
 ;group             = opensips
 ;limit             = None
 ;prepaid_limit     = None
@@ -89,7 +89,7 @@
 ; Configure connection to OpenSIPS' MI
 ;
 ; socket_path  Path to the OpenSIPS MI socket
-;              Default value: /var/run/opensips/socket
+;              Default value: /run/opensips/socket
 ;
-;socket_path = /var/run/opensips/socket
+;socket_path = /run/opensips/socket
 
