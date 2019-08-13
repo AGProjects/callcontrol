@@ -36,19 +36,18 @@ class TimeLimit(int):
             raise ValueError("invalid time limit value: %r. should be positive." % value)
         return limit
 
+
 class TimeoutDetection(str):
     _values = ('dialog', 'radius')
-    def __init__(self, value):
-        value = value.lower()
-        if value not in self._values:
-            raise ValueError("invalid timeout detection value: %r" % value)
-        if value == 'radius':
-            self.use_radius = True
-        else:
-            self.use_radius = False
 
     def __new__(cls, value):
-        return str.__new__(cls, value.lower())
+        value = value.lower()
+        if value not in cls._values:
+            raise ValueError('invalid timeout detection value: %r' % value)
+        instance = super(TimeoutDetection, cls).__new__(cls, value)
+        instance.use_radius = value == 'radius'
+        return instance
+
 
 class CallControlConfig(ConfigSection):
     __cfgfile__ = configuration_file
