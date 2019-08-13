@@ -4,4 +4,4 @@ recursive-include debian/source format
 recursive-include doc/man *.[1-9]
 prune debian/tmp
 prune debian/callcontrol
-include INSTALL LICENSE MANIFEST.in changelog
+include INSTALL LICENSE MANIFEST.in
