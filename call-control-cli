@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+import callcontrol
+import socket
+import sys
+
+from application import log
+from application.process import process
+from argparse import ArgumentParser
+
+
+class CallControlCommand(object):
+    def __init__(self, command, **kw):
+        self.command = command
+        self.kw = kw
+
+    def __str__(self):
+        arguments = [self.command]
+        arguments.extend('{}: {}'.format(key, value) for key, value in self.kw.items())
+        return '\r\n'.join(arguments) + '\r\n\r\n'
+
+    def execute(self):
+        target = process.runtime.file('socket')
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            # noinspection PyShadowingNames
+            try:
+                sock.connect(target)
+                sock.sendall(str(self))
+                response = ''
+                while True:
+                    data = sock.recv(4096)
+                    response += data
+                    if not data or data.endswith('\r\n\r\n'):
+                        break
+            except socket.error as e:
+                raise RuntimeError('could not send command to {}: {}'.format(target, e))
+        finally:
+            sock.close()
+        for line in response.rstrip().splitlines():
+            print(line)
+
+    @classmethod
+    def handler(cls, options):
+        raise NotImplementedError
+
+
+class ListCommand(CallControlCommand):
+    def __init__(self, user=None):
+        if user is not None:
+            kw = dict(command='debug', show='sessions', user=user)
+        else:
+            kw = dict(command='debug', show='sessions')
+        super(ListCommand, self).__init__(**kw)
+
+    @classmethod
+    def handler(cls, options):
+        return cls(options.user).execute()
+
+
+class ShowCommand(CallControlCommand):
+    def __init__(self, call_id):
+        super(ShowCommand, self).__init__(command='debug', show='session', callid=call_id)
+
+    @classmethod
+    def handler(cls, options):
+        return cls(options.call_id).execute()
+
+
+class TerminateCommand(CallControlCommand):
+    def __init__(self, call_id):
+        super(TerminateCommand, self).__init__(command='terminate', callid=call_id)
+
+    @classmethod
+    def handler(cls, options):
+        return cls(options.call_id).execute()
+
+
+if __name__ == '__main__':
+
+    name = 'call-control-cli'
+    description = 'Command line interface tool for call-control'
+
+    log.Formatter.prefix_format = '{record.levelname:<8s} '
+
+    process.configuration.user_directory = None
+    process.configuration.subdirectory = 'callcontrol'
+    process.runtime.subdirectory = 'callcontrol'
+
+    parser = ArgumentParser(description='This script can issue commands to a running instance of call-control')
+    parser.add_argument('--version', action='version', version='%(prog)s {}'.format(callcontrol.__version__))
+    parser.add_argument('--runtime-dir', dest='runtime_directory', default=None, help='the runtime directory ({})'.format(process.runtime.directory), metavar='PATH')
+
+    subparsers = parser.add_subparsers(title='supported commands', dest='command')
+
+    parser_list = subparsers.add_parser('list', help='list existing sessions')
+    parser_list.add_argument('user', nargs='?', help='optional user to filter results by')
+    parser_list.set_defaults(handler=ListCommand.handler)
+
+    parser_show = subparsers.add_parser('show', help='show details about a specific session')
+    parser_show.add_argument('call_id', help='the call-id for the session')
+    parser_show.set_defaults(handler=ShowCommand.handler)
+
+    parser_terminate = subparsers.add_parser('terminate', help='terminate a specific session')
+    parser_terminate.add_argument('call_id', help='the call-id for the session')
+    parser_terminate.set_defaults(handler=TerminateCommand.handler)
+
+    args = parser.parse_args()
+
+    if args.runtime_directory is not None:
+        process.runtime.directory = args.runtime_directory
+
+    try:
+        args.handler(args)
+    except Exception as e:
+        log.critical('Failed to execute command: {}'.format(e))
+        sys.exit(1)

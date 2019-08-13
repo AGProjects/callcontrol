@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH "SIP Call Control" "1" "May 15, 2008"
+.TH "SIP Call Control" "1" "Aug 13, 2019"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -16,7 +16,7 @@
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
 .SH NAME
-call\-control \- the SIP call control application
+call\-control \- A SIP call control engine for OpenSIPS
 .SH SYNOPSIS
 .B call-control
 .RI [ options ]
@@ -25,30 +25,40 @@ call\-control \- the SIP call control application
 .\" TeX users may be more comfortable with the \fB<whatever>\fP and
 .\" \fI<whatever>\fP escape sequences to invode bold face and italics, 
 .\" respectively.
-Call Control is a prepaid application that can be used together with
-OpenSIPS call_control module and CDRTool rating engine to limit the duration
-of SIP sessions based on a prepaid balance. It can also be used to limit the
-duration of any session to a predefined maximum value without debiting a
-balance.
+Call Control is a prepaid application that can be used together with the
+OpenSIPS call_control module and the CDRTool rating engine to limit the
+duration of SIP sessions based on a prepaid balance. It can also be used
+to limit the duration of non-prepaid sessions to a predefined maximum
+value.
 .PP
 Call Control achieves this by maintaining a timer for each session and
-sending BYE messages to both SIP end-points, if the session exceeds its
-maximum session limit or if the Call Control receives a command to
-forcefully close the call from outside.
+terminating the call if the session exceeds its allowed time limit or
+if Call Control receives an external request to terminate the session.
 .SH OPTIONS
 .TP
 .B \-h, \-\-help
 Show summary of options.
 .TP
 .B \-\-version
-Show version of program.
+Show the program version.
+.TP
+.B \-\-systemd
+Run the process as a systemd simple service and log to journal.
 .TP
 .B \-\-no\-fork
-Run the process in the foreground (for debugging).
+Run the process in the foreground and log to the terminal.
 .TP
-.B \-\-pid=file
-Set the proces pid file to \fB`file'\fP. If not specified the default
-pid file is \fB/var/run/callcontrol/call\-control.pid\fP .
+.B \-\-config\-dir=PATH
+Set a custom configuration directory (default: \fB/etc/callcontrol\fP).
+.TP
+.B \-\-runtime\-dir=PATH
+Set a custom runtime directory (default: \fB/run/callcontrol\fP).
+.TP
+.B \-\-debug
+Enable verbose logging.
+.TP
+.B \-\-debug\-memory
+Enable memory debugging.
 .SH AUTHORS
 Dan Pascu <dan@ag-projects.com>
 .br

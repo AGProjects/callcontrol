@@ -26,5 +26,5 @@ setup(
     ],
 
     packages=['callcontrol', 'callcontrol.rating', 'callcontrol.rating.backends'],
-    scripts=['call-control']
+    scripts=['call-control', 'call-control-cli']
 )
