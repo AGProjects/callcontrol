@@ -479,7 +479,7 @@ class Request(object):
         if cmd not in self.__methods.keys():
             raise InvalidRequestError("Unknown request: %s" % cmd)
         try:
-            parameters = dict([re.split(r':\s+', l, 1) for l in params])
+            parameters = dict(re.split(r':\s+', l, 1) for l in params)
         except ValueError:
             raise InvalidRequestError("Badly formatted request")
         for p in self.__methods[cmd]:
