@@ -64,7 +64,7 @@ if __name__ == '__main__':
         from application.debug.memory import memory_dump
 
     try:
-        cserver = CallControlServer()
+        server = CallControlServer()
     except Exception, e:
         log.critical('Could not create %s: %s', fullname, e)
         if type(e) is not RuntimeError:
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     try:
-        cserver.run()
+        server.run()
     except Exception, e:
         log.critical('Could not run %s: %s', fullname, e)
         if type(e) is not RuntimeError:
