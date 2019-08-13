@@ -53,31 +53,33 @@ class CallControlConfig(ConfigSection):
     __cfgfile__ = configuration_file
     __section__ = 'CallControl'
 
-    socket            = "%s/socket" % process.runtime_directory
-    group             = 'opensips'
-    limit             = ConfigSetting(type=TimeLimit, value=None)
-    timeout           = 24*60*60 ## timeout calls that are stale for more than 24 hours.
-    setupTime         = 90       ## timeout calls that take more than 1'30" to setup.
-    checkInterval     = 60       ## check for staled calls and calls that did timeout at every minute.
-    timeout_detection = TimeoutDetection('dialog') ## whether or not to use the radius database to find out terminated calls
+    socket = "%s/socket" % process.runtime_directory
+    group = 'opensips'
+    limit = ConfigSetting(type=TimeLimit, value=None)
+    timeout = 24*60*60  # timeout calls that are stale for more than 24 hours.
+    setupTime = 90      # timeout calls that take more than 1'30" to setup.
+    checkInterval = 60  # check for staled calls and calls that did timeout at every minute.
+    timeout_detection = TimeoutDetection('dialog')  # whether or not to use the radius database to find out terminated calls
 
 
+class CommandError(Exception):
+    pass
 
-## Classes
 
-class CommandError(Exception):        pass
-class InvalidRequestError(Exception): pass
+class InvalidRequestError(Exception):
+    pass
 
 
 class CallsMonitor(object):
     """Check for staled calls and calls that did timeout and were closed by external means"""
+
     def __init__(self, period, application):
         self.application = application
         self.reccall = RecurrentCall(period, self.run)
 
     def run(self):
         if CallControlConfig.timeout_detection.use_radius:
-            ## Find out terminated calls
+            # Find out terminated calls
             deferred1 = self.application.db.getTerminatedCalls(self.application.calls)
             deferred1.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_terminated])
             deferred2 = self.application.db.getTimedoutCalls(self.application.calls)
@@ -107,7 +109,7 @@ class CallsMonitor(object):
         call.end(reason='calls monitor as timedout', sendbye=True)
 
     def _finish_checks(self, value):
-        ## Also do the rest of the checking
+        # Also do the rest of the checking
         now = time.time()
         staled = []
         nosetup = []
@@ -116,14 +118,14 @@ class CallsMonitor(object):
                 self.application.clean_call(callid)
                 nosetup.append(call)
             elif call.inprogress and call.timer is not None:
-                continue ## this call will be expired by its own timer
+                continue  # this call will be expired by its own timer
             elif now - call.created >= CallControlConfig.timeout:
                 self.application.clean_call(callid)
                 staled.append(call)
-        ## Terminate staled
+        # Terminate staled
         for call in staled:
             call.end(reason='calls monitor as staled', sendbye=True)
-        ## Terminate calls that didn't setup in setupTime
+        # Terminate calls that didn't setup in setupTime
         for call in nosetup:
             call.end(reason="calls monitor as it didn't setup in %d seconds" % CallControlConfig.setupTime)
 
@@ -203,21 +205,21 @@ class CallControlProtocol(LineOnlyReceiver):
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Call limit reached')
-            elif call.locked: ## prepaid account already locked by another call
+            elif call.locked:  # prepaid account already locked by another call
                 log.info("Call id %s of %s to %s forbidden because the account is locked" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Locked')
-            elif call.timelimit == 0: ## prepaid account with no credit
+            elif call.timelimit == 0:  # prepaid account with no credit
                 log.info("Call id %s of %s to %s forbidden because credit is too low" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No credit')
-            elif req.call_limit is not None or call.timelimit is not None: ## call limited by credit value, a global time limit or number of calls
+            elif req.call_limit is not None or call.timelimit is not None:  # call limited by credit value, a global time limit or number of calls
                 log.info("User %s can make %s concurrent calls" % (call.billingParty, req.call_limit or "unlimited"))
                 self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
                 req.deferred.callback('Limited')
-            else: ## no limit for call
+            else:  # no limit for call
                 log.info("Call id %s of %s to %s is postpaid not limited" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
@@ -374,14 +376,14 @@ class CallControlServer(object):
             else:
                 for call in self.calls.values():
                     call.application = None
-                    ## we will mark timers with 'running' or 'idle', depending on their current state,
-                    ## to be able to correctly restore them later (Timer objects cannot be pickled)
+                    # we will mark timers with 'running' or 'idle', depending on their current state,
+                    # to be able to correctly restore them later (Timer objects cannot be pickled)
                     if call.timer is not None:
                         if call.inprogress:
                             call.timer.cancel()
-                            call.timer = 'running' ## temporary mark that this timer was running
+                            call.timer = 'running'  # temporary mark that this timer was running
                         else:
-                            call.timer = 'idle'    ## temporary mark that this timer was not running
+                            call.timer = 'idle'     # temporary mark that this timer was not running
                 failed_dump = False
                 try:
                     try:
@@ -414,13 +416,13 @@ class CallControlServer(object):
             except: pass
             if self.calls:
                 log.info("Restoring calls saved previously: %s" % str(self.calls.keys()))
-                ## the calls in the 2 sets below are never overlapping because closed and terminated
-                ## calls have different database fingerprints. so the dictionary update below is safe
+                # the calls in the 2 sets below are never overlapping because closed and terminated
+                # calls have different database fingerprints. so the dictionary update below is safe
                 try:
                     db = self.db if self.db is not None else RadiusDatabase()
                     try:
-                        terminated = db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))   ## calls terminated by caller/called
-                        didtimeout = db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))     ## calls closed by mediaproxy after a media timeout
+                        terminated = db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))  # calls terminated by caller/called
+                        didtimeout = db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))    # calls closed by mediaproxy after a media timeout
                     finally:
                         if self.db is None:
                             db.close()
@@ -430,12 +432,12 @@ class CallControlServer(object):
                     for callid, call in self.calls.items():
                         callinfo = terminated.get(callid) or didtimeout.get(callid)
                         if callinfo:
-                            ## call already terminated or did timeout in mediaproxy
+                            # call already terminated or did timeout in mediaproxy
                             del self.calls[callid]
                             callinfo['call'] = call
                             call.timer = None
                             continue
-                    ## close all calls that were already terminated or did timeout
+                    # close all calls that were already terminated or did timeout
                     count = 0
                     for callinfo in terminated.values():
                         call = callinfo.get('call')
