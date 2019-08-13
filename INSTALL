@@ -144,7 +144,7 @@ address = cdrtool.hostname:9024
 ; table = radacct%Y%m
 
 [OpenSIPS]
-; connection to OpenSIPS call_control module
+; Connection to OpenSIPS' MI
 ; socket_path = /run/opensips/socket
 
 A more detailed sample configuration file is available in config.ini.sample.
