@@ -1,0 +1,13 @@
+[Unit]
+Description=Call Control Engine
+After=network.target nss-lookup.target mysqld.service mariadb.service thor-eventserver.service
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=yes
+ExecStart=/usr/bin/call-control --systemd
+Restart=on-abnormal
+LimitCORE=infinity
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,5 @@
 recursive-include debian  changelog compat control copyright docs rules
-recursive-include debian  callcontrol.init lintian-overrides manpages
+recursive-include debian  lintian-overrides manpages callcontrol.service
 recursive-include debian/source format
 recursive-include doc/man *.[1-9]
 prune debian/tmp
