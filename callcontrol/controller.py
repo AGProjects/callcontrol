@@ -38,18 +38,6 @@ class TimeLimit(int):
         return limit
 
 
-class TimeoutDetection(str):
-    _values = ('dialog', 'radius')
-
-    def __new__(cls, value):
-        value = value.lower()
-        if value not in cls._values:
-            raise ValueError('invalid timeout detection value: %r' % value)
-        instance = super(TimeoutDetection, cls).__new__(cls, value)
-        instance.use_radius = value == 'radius'
-        return instance
-
-
 class CallControlConfig(ConfigSection):
     __cfgfile__ = configuration_file
     __section__ = 'CallControl'
@@ -60,7 +48,6 @@ class CallControlConfig(ConfigSection):
     timeout = 24*60*60  # timeout calls that are stale for more than 24 hours.
     setupTime = 90      # timeout calls that take more than 1'30" to setup.
     checkInterval = 60  # check for staled calls and calls that did timeout at every minute.
-    timeout_detection = TimeoutDetection('dialog')  # whether or not to use the radius database to find out terminated calls
 
 
 class CommandError(Exception):
@@ -72,45 +59,13 @@ class InvalidRequestError(Exception):
 
 
 class CallsMonitor(object):
-    """Check for staled calls and calls that did timeout and were closed by external means"""
+    """Check for staled calls"""
 
     def __init__(self, period, application):
         self.application = application
         self.reccall = RecurrentCall(period, self.run)
 
     def run(self):
-        if CallControlConfig.timeout_detection.use_radius:
-            # Find out terminated calls
-            deferred1 = self.application.db.getTerminatedCalls(self.application.calls)
-            deferred1.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_terminated])
-            deferred2 = self.application.db.getTimedoutCalls(self.application.calls)
-            deferred2.addCallbacks(callback=self._clean_calls, errback=self._err_handle, callbackArgs=[self._handle_timedout])
-            defer.DeferredList([deferred1, deferred2]).addCallback(self._finish_checks)
-        else:
-            self._finish_checks(None)
-        return KeepRunning
-
-    def shutdown(self):
-        self.reccall.cancel()
-
-    def _clean_calls(self, calls, clean_function):
-        for callid, callinfo in calls.items():
-            call = self.application.calls.get(callid)
-            if call:
-                self.application.clean_call(callid)
-                clean_function(call, callinfo)
-
-    def _err_handle(self, fail):
-        log.error("Couldn't query database for terminated/timedout calls: %s" % fail.value)
-
-    def _handle_terminated(self, call, callinfo):
-        call.end(calltime=callinfo['duration'], reason='calls monitor as terminated')
-
-    def _handle_timedout(self, call, callinfo):
-        call.end(reason='calls monitor as timedout', sendbye=True)
-
-    def _finish_checks(self, value):
-        # Also do the rest of the checking
         now = time.time()
         staled = []
         nosetup = []
@@ -129,6 +84,10 @@ class CallsMonitor(object):
         # Terminate calls that didn't setup in setupTime
         for call in nosetup:
             call.end(reason="calls monitor as it didn't setup in %d seconds" % CallControlConfig.setupTime)
+        return KeepRunning
+
+    def shutdown(self):
+        self.reccall.cancel()
 
 
 class CallControlProtocol(LineOnlyReceiver):
@@ -292,11 +251,6 @@ class CallControlServer(object):
         self.listening = None
         self.engines = None
         self.monitor = None
-        if CallControlConfig.timeout_detection.use_radius:
-            self.db = RadiusDatabase()
-        else:
-            self.db = None
-
         self.calls = {}
         self.users = {}
         self._restore_calls()
@@ -357,8 +311,6 @@ class CallControlServer(object):
             should_close.append(self.engines.shutdown())
         if self.monitor is not None:
             self.monitor.shutdown()
-        if self.db is not None:
-            should_close.append(self.db.close())
         d = defer.DeferredList(should_close)
         d.addBoth(self._save_calls)
         return d
@@ -415,13 +367,12 @@ class CallControlServer(object):
                 # the calls in the 2 sets below are never overlapping because closed and terminated
                 # calls have different database fingerprints. so the dictionary update below is safe
                 try:
-                    db = self.db if self.db is not None else RadiusDatabase()
+                    db = RadiusDatabase()
                     try:
                         terminated = db.query(RadiusDatabase.RadiusTask(None, 'terminated', calls=self.calls))  # calls terminated by caller/called
                         didtimeout = db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))    # calls closed by mediaproxy after a media timeout
                     finally:
-                        if self.db is None:
-                            db.close()
+                        db.close()
                 except RadiusDatabaseError, e:
                     log.error("Could not query database: %s" % e)
                 else:

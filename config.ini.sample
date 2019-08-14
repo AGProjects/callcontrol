@@ -34,18 +34,10 @@
 ;               exactly that: 0 seconds, not diabled. Use None for disabled.
 ;               Default value: None 
 ;
-; timeout_detection  The mechanism used to find out about timed out calls. If
-;                    set to `radius', it will consider the section
-;                    RadiusDatabase in order to make a connection to the radius
-;                    database. This is only needed if MediaProxy does not use
-;                    OpenSIPS' dialog module to terminate a call that has timed
-;                    out. Otherwise, set to `dialog'.
-;
 ;socket            = /run/callcontrol/socket
 ;group             = opensips
 ;limit             = None
 ;prepaid_limit     = None
-;timeout_detection = dialog
 
 [CDRTool]
 ;
@@ -70,13 +62,14 @@
 
 [RadiusDatabase]
 ;
-; Used to keep track of calls that timeout and are closed by external means
-; (like mediaproxy) without sending BYEs that will close the call in the
-; call controller the normal way.
-; Database table can be defined as static (e.g. radacct) or as strftime like
-; time specification (e.g. radacct%Y%m). This section is used if the option
-; timeout_detection in CallControl section is set to `radius'. You need to
-; escape the percent signs by doubling them (e.g. radacct%%Y%%m).
+; This is used to detect calls that ended or did timeout while callcontrol
+; was stopped/restarting. This check is only performed once when starting
+; so that the list of calls that was saved before stopping can be updated
+; based on what happened while callcontrol was stopped.
+;
+; The table name can contain strftime time specifications (like %Y %m).
+; The percent character needs to be escaped by doubling it, so a dynamic
+; table name would look like radacct%%Y%%m
 ;
 ;user = dbuser
 ;password = dbpass

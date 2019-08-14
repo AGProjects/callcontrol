@@ -127,21 +127,16 @@ callcontrol module.
 The application is searching for its configuration file config.ini in its current
 directory and in /etc/callcontrol/config.ini
 
-; detect sessions that have media timeout without BYE
-timeout_detection=dialog
-
 [CDRTool]
 ; connection to cdrtool rating engine for MaxSessionTime() and DebitBalance()
 address = cdrtool.hostname:9024
 
 [RadiusDatabase]
-; connection to Radius database if timeout_detection=radius, you must enable
-; MediaProxy Radius accounting for this to work
 ; user = radius
 ; password = password
 ; host = db
 ; database = radius
-; table = radacct%Y%m
+; table = radacct%%Y%%m
 
 [OpenSIPS]
 ; Connection to OpenSIPS' MI
