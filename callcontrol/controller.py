@@ -285,11 +285,10 @@ class CallControlFactory(Factory):
 
 
 class CallControlServer(object):
-    def __init__(self, path=None, group=None):
-        self.path = path or CallControlConfig.socket
-        self.group = group or CallControlConfig.group
-        unlink(self.path)
-
+    def __init__(self):
+        unlink(CallControlConfig.socket)
+        self.path = CallControlConfig.socket
+        self.group = CallControlConfig.group
         self.listening = None
         self.engines = None
         self.monitor = None
