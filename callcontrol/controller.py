@@ -7,9 +7,10 @@ import re
 import cPickle
 import time
 
+from application import log
 from application.configuration import ConfigSection, ConfigSetting
 from application.process import process
-from application import log
+from application.system import unlink
 
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineOnlyReceiver
@@ -287,10 +288,7 @@ class CallControlServer(object):
     def __init__(self, path=None, group=None):
         self.path = path or CallControlConfig.socket
         self.group = group or CallControlConfig.group
-        try:
-            os.unlink(self.path)
-        except OSError:
-            pass
+        unlink(self.path)
 
         self.listening = None
         self.engines = None
@@ -395,8 +393,7 @@ class CallControlServer(object):
                 finally:
                     f.close()
                 if failed_dump:
-                    try:    os.unlink(calls_file)
-                    except: pass
+                    unlink(calls_file)
                 else:
                     log.info("Saved calls: %s" % str(self.calls.keys()))
             self.calls = {}
@@ -413,8 +410,7 @@ class CallControlServer(object):
             except Exception as e:
                 log.warning('Failed to load calls saved in the previous session: %s', e)
             f.close()
-            try:    os.unlink(calls_file)
-            except: pass
+            unlink(calls_file)
             if self.calls:
                 log.info("Restoring calls saved previously: %s" % str(self.calls.keys()))
                 # the calls in the 2 sets below are never overlapping because closed and terminated
