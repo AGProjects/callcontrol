@@ -87,7 +87,7 @@ if __name__ == '__main__':
     process.configuration.subdirectory = 'callcontrol'
     process.runtime.subdirectory = 'callcontrol'
 
-    parser = ArgumentParser(description='This script can issue commands to a running instance of call-control')
+    parser = ArgumentParser(description='This script can issue commands to a running instance of a call-control engine. Use "%(prog)s COMMAND --help" for help on a specific command.')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(callcontrol.__version__))
     parser.add_argument('--runtime-dir', dest='runtime_directory', default=None, help='the runtime directory ({})'.format(process.runtime.directory), metavar='PATH')
 
