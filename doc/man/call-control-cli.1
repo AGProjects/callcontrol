@@ -27,7 +27,7 @@ call\-control\-cli \- Command line interface for Call Control
 .\" \fI<whatever>\fP escape sequences to invode bold face and italics, 
 .\" respectively.
 The \fBcall\-control\-cli\fP command is used for sending requests to a
-running \fBcall\-control\fP server. It can either query the running server
+running \fBcall\-control\fP engine. It can either query the running server
 for information about the existing sessions or it can issue commands to
 administratively terminate sessions.
 .SH OPTIONS
@@ -39,7 +39,7 @@ Show summary of options.
 Show the program version.
 .TP
 .B \-\-runtime\-dir=PATH
-Set a custom runtime directory (default: \fB/run/callcontrol\fP). Must
+Set the runtime directory (default is \fB/run/callcontrol\fP). It must
 match the runtime directory used by the \fBcall\-control\fP engine.
 .SH COMMANDS
 .TP
