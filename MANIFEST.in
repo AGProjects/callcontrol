@@ -1,7 +1,17 @@
-recursive-include debian  changelog compat control copyright docs rules
-recursive-include debian  lintian-overrides manpages callcontrol.service
-recursive-include debian/source format
-recursive-include doc/man *.[1-9]
-prune debian/tmp
-prune debian/callcontrol
-include INSTALL LICENSE MANIFEST.in
+include LICENSE
+include INSTALL
+include README
+include MANIFEST.in
+
+include debian/callcontrol.service
+include debian/changelog
+include debian/compat
+include debian/control
+include debian/copyright
+include debian/docs
+include debian/lintian-overrides
+include debian/manpages
+include debian/rules
+include debian/source/format
+
+graft doc
