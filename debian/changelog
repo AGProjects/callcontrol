@@ -1,3 +1,60 @@
+callcontrol (3.0.0) unstable; urgency=medium
+
+  * Updated opensips interface to use json
+  * Renamed configuration_filename to configuration_file
+  * Streamlined error logging for the OpenSIPS MI interface
+  * Use new runtime directory
+  * Removed unnecessary variable
+  * Removed some superfluous comments
+  * Fixed comment style
+  * Fixed octal constants to use new syntax
+  * Set boring file to .boring and updated its content
+  * Simplified class definition
+  * Fixed some PEP-8 violations
+  * Updated logging to the API changes in python-application 2.8.0
+  * Adapted to process API changes in python-application 2.8.0
+  * Removed unnecessary list creation with dict instantiation
+  * Refactored setup.py
+  * Refactored the call-control script
+    - Split call-control into call-control and call-control-cli
+    - Redesigned the command line options for call-control-cli
+    - Use the argparse module for parsing command line arguments
+    - Replaced --pid with --config-dir and --runtime-dir options
+    - Added --debug and --debug-memory options for call-control
+    - Added --systemd command line option for call-control
+  * Removed no longer needed pycompat and pyversions files
+  * Updated debian uploaders
+  * Increased debian compatibility level to 11
+  * Split debian package dependencies one per line
+  * Install config.ini.sample from setup.py
+  * Updated debian build procedure
+  * Fixed permissions for the debian installed configuration file
+  * Renamed debian file to remove unnecessary package name prefix
+  * Removed no longer needed debian file
+  * Switched from init script to systemd service file
+  * Updated license and copyright years
+  * Removed duplicate changelog file
+  * Fixed default runtime directory path
+  * Removed no longer available configuration option from INSTALL
+  * Added code to wait for the network to become available on start
+  * Use the unlink wrapper from python-application
+  * Removed duplicated arguments from the CallControlServer instantiation
+  * Removed outdated termination detection mechanism
+  * Fixed pidfile argument to process.daemonize()
+  * Reworded some sections in the manual pages
+  * Improved call-control-cli help message
+  * Reworded help message
+  * Use single quotes in help message
+  * Fixed the program name in man pages
+  * Fixed manual pages
+  * Made MANIFEST.in more explicit and avoid unnecessary prune commands
+  * Removed package name prefix from the systemd service filename
+  * Removed commented out variable in debian rules
+  * Explicitly use python2 in shebang lines
+  * Increased debian standards version to 4.5.0
+
+ -- Dan Pascu <dan@ag-projects.com>  Fri, 14 Feb 2020 13:39:24 +0200
+
 callcontrol (2.2.3) unstable; urgency=medium
 
   * Added dependency on python-gnutls
