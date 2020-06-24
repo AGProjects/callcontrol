@@ -105,7 +105,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
 
     def timeoutConnection(self):
         log.info("Connection to Rating Engine at %s:%d timedout" % (self.transport.getPeer().host, self.transport.getPeer().port))
-        self.transport.loseConnection(RatingEngineTimeoutError())
+        self.transport.loseConnection()
 
     def lineReceived(self, line):
         # log.debug('Got reply from rating engine: %s', line)
