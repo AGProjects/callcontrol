@@ -163,25 +163,26 @@ class CallControlProtocol(LineOnlyReceiver):
             req.deferred.callback('Error')
         else:
             if req.call_limit is not None and len(self.factory.application.users.get(call.billingParty, ())) >= req.call_limit:
+                log.info("Call id %s of %s to %s forbidden because limit has been reached" % (req.callid, call.user, call.ruri))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Call limit reached')
             elif call.locked:  # prepaid account already locked by another call
-                log.info("Call id %s of %s to %s forbidden because the account is locked" % (req.callid, call.user, call.ruri))
+                log.info("Call from %s to %s is forbidden because account is locked" % (call.user, call.ruri, req.callid))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('Locked')
             elif call.timelimit == 0:  # prepaid account with no credit
-                log.info("Call id %s of %s to %s forbidden because credit is too low" % (req.callid, call.user, call.ruri))
+                log.info("Call from %s to %s is forbidden because of low credit (%s)" % (call.user, call.ruri, req.callid))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No credit')
             elif req.call_limit is not None or call.timelimit is not None:  # call limited by credit value, a global time limit or number of calls
-                log.info("User %s can make %s concurrent calls" % (call.billingParty, req.call_limit or "unlimited"))
+                log.info("%s can make %s concurrent calls (%s)" % (call.billingParty, req.call_limit or "unlimited", req.callid))
                 self.factory.application.users.setdefault(call.billingParty, []).append(call.callid)
                 req.deferred.callback('Limited')
             else:  # no limit for call
-                log.info("Call id %s of %s to %s is postpaid not limited" % (req.callid, call.user, call.ruri))
+                log.info("Call from %s to %s is postpaid without limits (%s)" % (call.user, call.ruri, req.callid))
                 self.factory.application.clean_call(req.callid)
                 call.end()
                 req.deferred.callback('No limit')
