@@ -138,10 +138,10 @@ class RatingEngineProtocol(LineOnlyReceiver):
             elif limit == 'Locked':
                 pass
             else:
-                raise ValueError("limit must be a non-negative number, None or Locked: %s" % limit)
+                raise ValueError("rating engine limit must be a positive number, None or Locked: got '%s' from %s:%s" % (limit, self.transport.getPeer().host, self.transport.getPeer().port))
         else:
             if limit < 0:
-                raise ValueError("limit must be a non-negative number, None or Locked: %s" % limit)
+                raise ValueError("rating engine limit must be a positive number, None or Locked: got '%s' from %s:%s" % (limit, self.transport.getPeer().host, self.transport.getPeer().port))
 
         info = dict(line.split('=', 1) for line in lines[1:])
         if 'type' in info:
@@ -151,7 +151,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
             elif type == 'postpaid':
                 prepaid = False
             else:
-                raise ValueError("prepaid must be either True or False: %s" % type)
+                raise ValueError("prepaid must be either True or False: got '%s' from %s:%s" % (type, self.transport.getPeer().host, self.transport.getPeer().port))
         else:
             prepaid = limit is not None
         return limit, prepaid
@@ -162,9 +162,9 @@ class RatingEngineProtocol(LineOnlyReceiver):
         try:
             result = lines[0].strip().capitalize()
         except IndexError:
-            raise ValueError("Empty reply from rating engine")
+            raise ValueError("Empty reply from rating engine %s:%s", (self.transport.getPeer().host, self.transport.getPeer().port))
         if result not in valid_answers:
-            log.error("Invalid reply from rating engine: `%s'" % lines[0].strip())
+            log.error("Invalid reply from rating engine: got '%s' from %s:%s" % (lines[0].strip(), self.transport.getPeer().host, self.transport.getPeer().port))
             log.warning('Rating engine possible failed query: %s', self.__request)
             raise RatingEngineError('Invalid rating engine response')
         elif result == 'Failed':
@@ -175,7 +175,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 timelimit = int(lines[1].split('=', 1)[1].strip())
                 totalcost = lines[2].strip()
             except:
-                log.error("Invalid reply from rating engine for DebitBalance on lines 2, 3: `%s'" % ("', `".join(lines[1:3])))
+                log.error("Invalid reply from rating engine for DebitBalance on lines 2, 3: got '%s' from %s:%s" % ("', `".join(lines[1:3]), self.transport.getPeer().host, self.transport.getPeer().port))
                 timelimit = None
                 totalcost = 0
             return timelimit, totalcost
