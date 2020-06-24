@@ -1,6 +1,7 @@
 callcontrol (3.0.1) unstable; urgency=medium
 
   * Fixed connection failure exception
+  * Added call-id to all logs
 
  -- Adrian Georgescu <ag@ag-projects.com>  Wed, 24 Jun 2020 16:45:28 +0200
 
