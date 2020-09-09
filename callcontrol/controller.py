@@ -4,7 +4,7 @@
 import os
 import grp
 import re
-import cPickle
+import pickle
 import time
 
 from application import log
@@ -69,7 +69,7 @@ class CallsMonitor(object):
         now = time.time()
         staled = []
         nosetup = []
-        for callid, call in self.application.calls.items():
+        for callid, call in list(self.application.calls.items()):
             if not call.complete and (now - call.created >= CallControlConfig.setupTime):
                 self.application.clean_call(callid)
                 nosetup.append(call)
@@ -102,7 +102,7 @@ class CallControlProtocol(LineOnlyReceiver):
     def _process(self):
         try:
             req = Request(self.line_buf[0], self.line_buf[1:])
-        except InvalidRequestError, e:
+        except InvalidRequestError as e:
             self._send_error_reply(failure.Failure(e))
         else:
             # log.debug('Got request: %s', req)
@@ -111,7 +111,7 @@ class CallControlProtocol(LineOnlyReceiver):
                 req.deferred.errback(failure.Failure(CommandError(req)))
             try:
                 getattr(self, '_CC_%s' % req.cmd, _unknown_handler)(req)
-            except Exception, e:
+            except Exception as e:
                 self._send_error_reply(failure.Failure(e))
             else:
                 req.deferred.addCallbacks(callback=self._send_reply, errback=self._send_error_reply)
@@ -213,7 +213,7 @@ class CallControlProtocol(LineOnlyReceiver):
     def _CC_debug(self, req):
         debuglines = []
         if req.show == 'sessions':
-            for callid, call in self.factory.application.calls.items():
+            for callid, call in list(self.factory.application.calls.items()):
                 if not req.user or call.user.startswith(req.user):
                     debuglines.append('Call id %s of %s to %s: %s' % (callid, call.user, call.ruri, call.status))
         elif req.show == 'session':
@@ -222,7 +222,7 @@ class CallControlProtocol(LineOnlyReceiver):
             except KeyError:
                 debuglines.append('Call id %s does not exist' % req.callid)
             else:
-                for key, value in call.items():
+                for key, value in list(call.items()):
                     debuglines.append('%s: %s' % (key, value))
         req.deferred.callback('\r\n'.join(debuglines)+'\r\n')
 
@@ -325,7 +325,7 @@ class CallControlServer(object):
             except:
                 pass
             else:
-                for call in self.calls.values():
+                for call in list(self.calls.values()):
                     call.application = None
                     # we will mark timers with 'running' or 'idle', depending on their current state,
                     # to be able to correctly restore them later (Timer objects cannot be pickled)
@@ -338,7 +338,7 @@ class CallControlServer(object):
                 failed_dump = False
                 try:
                     try:
-                        cPickle.dump(self.calls, f)
+                        pickle.dump(self.calls, f)
                     except Exception as e:
                         log.warning('Failed to dump call list: %s', e)
                         failed_dump = True
@@ -347,7 +347,7 @@ class CallControlServer(object):
                 if failed_dump:
                     unlink(calls_file)
                 else:
-                    log.info("Saved calls: %s" % str(self.calls.keys()))
+                    log.info("Saved calls: %s" % str(list(self.calls.keys())))
             self.calls = {}
 
     def _restore_calls(self):
@@ -358,13 +358,13 @@ class CallControlServer(object):
             pass
         else:
             try:
-                self.calls = cPickle.load(f)
+                self.calls = pickle.load(f)
             except Exception as e:
                 log.warning('Failed to load calls saved in the previous session: %s', e)
             f.close()
             unlink(calls_file)
             if self.calls:
-                log.info("Restoring calls saved previously: %s" % str(self.calls.keys()))
+                log.info("Restoring calls saved previously: %s" % str(list(self.calls.keys())))
                 # the calls in the 2 sets below are never overlapping because closed and terminated
                 # calls have different database fingerprints. so the dictionary update below is safe
                 try:
@@ -374,10 +374,10 @@ class CallControlServer(object):
                         didtimeout = db.query(RadiusDatabase.RadiusTask(None, 'timedout', calls=self.calls))    # calls closed by mediaproxy after a media timeout
                     finally:
                         db.close()
-                except RadiusDatabaseError, e:
+                except RadiusDatabaseError as e:
                     log.error("Could not query database: %s" % e)
                 else:
-                    for callid, call in self.calls.items():
+                    for callid, call in list(self.calls.items()):
                         callinfo = terminated.get(callid) or didtimeout.get(callid)
                         if callinfo:
                             # call already terminated or did timeout in mediaproxy
@@ -387,19 +387,19 @@ class CallControlServer(object):
                             continue
                     # close all calls that were already terminated or did timeout
                     count = 0
-                    for callinfo in terminated.values():
+                    for callinfo in list(terminated.values()):
                         call = callinfo.get('call')
                         if call is not None:
                             call.end(calltime=callinfo['duration'])
                             count += 1
-                    for callinfo in didtimeout.values():
+                    for callinfo in list(didtimeout.values()):
                         call = callinfo.get('call')
                         if call is not None:
                             call.end(sendbye=True)
                             count += 1
                     if count > 0:
                         log.info("Removed %d already terminated call%s" % (count, 's'*(count!=1)))
-                for callid, call in self.calls.items():
+                for callid, call in list(self.calls.items()):
                     call.application = self
                     if call.timer == 'running':
                         now = time.time()
@@ -423,7 +423,7 @@ class Request(object):
                  'debug':     ('show',),
                  'terminate': ('callid',)}
     def __init__(self, cmd, params):
-        if cmd not in self.__methods.keys():
+        if cmd not in list(self.__methods.keys()):
             raise InvalidRequestError("Unknown request: %s" % cmd)
         try:
             parameters = dict(re.split(r':\s+', l, 1) for l in params)

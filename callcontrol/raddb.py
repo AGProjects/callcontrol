@@ -89,14 +89,14 @@ class RadiusDatabase(object):
     def _handle_task(self, task):
         try:
             reactor.callFromThread(task.deferred.callback, self.query(task))
-        except Exception, e:
+        except Exception as e:
             reactor.callFromThread(task.deferred.errback, failure.Failure(e))
 
     def _RD_terminated(self, task):
-        calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
+        calls = dict([(call.callid, call) for call in list(task.args['calls'].values()) if call.inprogress])
         if not calls:
             return {}
-        ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
+        ids = "(%s)" % ','.join(["'" + key + "'" for key in list(calls.keys())])
         query = """SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
                           %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
                    FROM   %(table)s
@@ -112,7 +112,7 @@ class RadiusDatabase(object):
                                                                   'ids': ids}
         try:
             rows = self.conn.queryAll(query)
-        except Exception, e:
+        except Exception as e:
             log.error("Query failed: %s" % query)
             raise RadiusDatabaseError("Exception while querying for terminated calls %s." % e)
         def find(row, calls):
@@ -124,10 +124,10 @@ class RadiusDatabase(object):
         return dict([(row[0], {'callid': row[0], 'duration': row[1], 'fromtag': row[2], 'totag': row[3]}) for row in rows if find(row, calls)])
 
     def _RD_timedout(self, task):
-        calls = dict([(call.callid, call) for call in task.args['calls'].values() if call.inprogress])
+        calls = dict([(call.callid, call) for call in list(task.args['calls'].values()) if call.inprogress])
         if not calls:
             return {}
-        ids = "(%s)" % ','.join(["'" + key + "'" for key in calls.keys()])
+        ids = "(%s)" % ','.join(["'" + key + "'" for key in list(calls.keys())])
         query = '''SELECT %(session_id_field)s AS callid, %(duration_field)s AS duration,
                           %(from_tag_field)s AS fromtag, %(to_tag_field)s AS totag
                    FROM   %(table)s
@@ -143,7 +143,7 @@ class RadiusDatabase(object):
                                                             'ids': ids}
         try:
             rows = self.conn.queryAll(query)
-        except Exception, e:
+        except Exception as e:
             log.error("Query failed: %s" % query)
             raise RadiusDatabaseError("Exception while querying for timedout calls %s." % e)
         def find(row, calls):

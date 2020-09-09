@@ -84,7 +84,7 @@ class Structure(dict):
             dict.__delitem__(self, name)
     def update(self, other):
         dict.update(self, other)
-        for key, value in other.items():
+        for key, value in list(other.items()):
             self.__dict__[key] = value
 
 
@@ -177,7 +177,8 @@ class Call(Structure):
             self._setup_timer()
         self.__initialized = True
 
-    def _setup_finish_calllimit(self, (limit, prepaid), deferred):
+    def _setup_finish_calllimit(self, xxx_todo_changeme, deferred):
+        (limit, prepaid) = xxx_todo_changeme
         if limit == 'Locked':
             self.timelimit = 0
             self.locked = True
@@ -243,7 +244,8 @@ class Call(Structure):
                         call.timelimit = self.timelimit
                         call._setup_timer()
 
-    def _start_finish_calllimit(self, (limit, prepaid)):
+    def _start_finish_calllimit(self, xxx_todo_changeme1):
+        (limit, prepaid) = xxx_todo_changeme1
         if limit not in (None, 'Locked'):
             delay = limit - self.timelimit
             for callid in self.application.users[self.billingParty]:
@@ -291,7 +293,8 @@ class Call(Structure):
         elif reason is not None:
             log.info("Call from %s to %s %s%s (%s)" % (self.user, self.ruri, fullreason, self.duration and (' after %d seconds' % self.duration) or '', self.callid))
 
-    def _end_finish(self, (timelimit, value), reason):
+    def _end_finish(self, xxx_todo_changeme2, reason):
+        (timelimit, value) = xxx_todo_changeme2
         if timelimit is not None and timelimit > 0:
             now = time.time()
             for callid in self.application.users.get(self.billingParty, ()):

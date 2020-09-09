@@ -71,7 +71,7 @@ class RatingRequest(str):
         self.deferred = defer.Deferred()
 
     def __new__(cls, command, reliable=True, **kwargs):
-        reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in kwargs.items())) or '')
+        reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in list(kwargs.items()))) or '')
         obj = str.__new__(cls, reqstr)
         return obj
 
@@ -120,7 +120,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
             self._respond(getattr(self, '_PE_%s' % self.__request.command.lower())(line))
         except AttributeError:
             self._respond("Unknown command in request. Cannot handle reply. Reply is: %s" % line, success=False)
-        except Exception, e:
+        except Exception as e:
             self._respond(str(e), success=False)
 
     def _PE_maxsessiontime(self, line):
@@ -315,9 +315,7 @@ class RatingEngineAddress(EndpointAddress):
     name = 'rating engine address'
 
 
-class RatingEngineConnections(object):
-    __metaclass__ = Singleton
-
+class RatingEngineConnections(object, metaclass=Singleton):
     def __init__(self):
         self.user_connections = {}
         if not ThorNodeConfig.enabled:

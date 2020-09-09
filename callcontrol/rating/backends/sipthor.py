@@ -33,8 +33,7 @@ class ThorNodeConfig(ConfigSection):
     ca = ConfigSetting(type=Certificate, value=None)
 
 
-class CallcontrolNode(EventServiceClient):
-    __metaclass__ = Singleton
+class CallcontrolNode(EventServiceClient, metaclass=Singleton):
     topics = ["Thor.Members"]
 
     def __init__(self):
@@ -121,7 +120,7 @@ class SipthorBackend(object):
 
     @property
     def connections(self):
-        return self.node.rating_connections.values()
+        return list(self.node.rating_connections.values())
 
     def shutdown(self):
         for connection in self.connections:

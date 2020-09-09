@@ -27,25 +27,25 @@ class Certificate(object):
     """Configuration data type. Used to create a gnutls.crypto.X509Certificate object
        from a file given in the configuration file."""
     def __new__(cls, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             try:
                 return X509Certificate(file_content(value))
-            except Exception, e:
+            except Exception as e:
                 log.warning("Certificate file '%s' could not be loaded: %s" % (value, e))
                 return None
         else:
-            raise TypeError, 'value should be a string'
+            raise TypeError('value should be a string')
 
 
 class PrivateKey(object):
     """Configuration data type. Used to create a gnutls.crypto.X509PrivateKey object
        from a file given in the configuration file."""
     def __new__(cls, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             try:
                 return X509PrivateKey(file_content(value))
-            except Exception, e:
+            except Exception as e:
                 log.warning("Private key file '%s' could not be loaded: %s" % (value, e))
                 return None
         else:
-            raise TypeError, 'value should be a string'
+            raise TypeError('value should be a string')
