@@ -1,19 +1,19 @@
 Source: callcontrol
 Section: net
 Priority: optional
-Maintainer: Dan Pascu <dan@ag-projects.com>
+Maintainer: Adrian Georgescu <ag@ag-projects.com>
 Uploaders: Tijmen de Mes <tijmen@ag-projects.com>
-Build-Depends: debhelper (>= 11), dh-python, python
+Build-Depends: debhelper (>= 11), dh-python, python3-all-dev
 Standards-Version: 4.5.0
 
 Package: callcontrol
 Architecture: all
-Depends: ${python:Depends}, ${misc:Depends},
-         python-application (>= 2.8.0),
-         python-gnutls (>= 3.0.0),
-         python-twisted-core,
-         python-sqlobject,
-         python-systemd
+Depends: ${python3:Depends}, ${misc:Depends},
+         python3-application (>= 3.0.0),
+         python3-gnutls (>= 3.0.0),
+         python3-twisted,
+         python3-sqlobject,
+         python3-systemd
 Description: Call Control prepaid application for OpenSIPS
  Call Control is a prepaid application that can be used together with
  OpenSIPS call_control module and CDRTool rating engine to limit the duration

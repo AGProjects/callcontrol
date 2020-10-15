@@ -1,3 +1,9 @@
+callcontrol (4.0.0) UNRELEASED; urgency=medium
+
+  * Migrated to Python 3
+
+ -- Adrian Georgescu <ag@ag-projects.com>  Thu, 15 Oct 2020 16:11:54 +0200
+
 callcontrol (3.0.1) unstable; urgency=medium
 
   * Fixed connection failure exception
