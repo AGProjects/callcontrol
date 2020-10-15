@@ -1,8 +1,8 @@
 
 """OpenSIPS Call control"""
 
-__version__ = "3.0.1"
+__version__ = "4.0.0"
 
-configuration_file = 'config.ini'
+configuration_file = '/etc/callcontrol/config.ini'
 backup_calls_file = 'calls.dat'
 

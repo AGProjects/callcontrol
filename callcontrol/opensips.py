@@ -1,7 +1,7 @@
 
 import json
 import socket
-import urllib.parse
+from urllib.parse import urlparse
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from application import log
@@ -50,7 +50,8 @@ class NegativeReplyError(OpenSIPSError):
         return '[{0.code}] {0.message}'.format(self)
 
 
-class Request(object, metaclass=ABCMeta):
+class Request(object):
+    __metaclass__ = ABCMeta
     method = abstractproperty()
 
     @abstractmethod
@@ -131,7 +132,7 @@ class ContactData(dict):
         super(ContactData, self).__init__({key: value for key, value in ((key.lower().replace('-', '_'), value) for key, value in data.items()) if key in self.__fields__})
         self.setdefault('user_agent', None)
         if 'received' in self:
-            parsed_received = urllib.parse.parse_qs(self['received'])
+            parsed_received = urlparse.parse_qs(self['received'])
             if 'target' in parsed_received:
                 self['NAT_contact'] = parsed_received['target'][0]
             else:
@@ -222,7 +223,8 @@ class UNIXSocketConnection(object):
             self.transport.requests.pop(request.id)
 
 
-class ManagementInterface(object, metaclass=Singleton):
+class ManagementInterface(object):
+    __metaclass__ = Singleton
     def __init__(self):
         self.connection = UNIXSocketConnection()
 

@@ -11,8 +11,8 @@ from application.python.types import Singleton
 
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import TimeoutError
-from twisted.internet import reactor, defer
-from twisted.protocols.basic import LineOnlyReceiver
+from twisted.internet import reactor, defer, protocol
+#from twisted.protocols.basic import LineOnlyReceiver
 from twisted.python import failure
 
 from callcontrol import configuration_file
@@ -63,9 +63,11 @@ class RatingEngineError(RatingError): pass
 class RatingEngineTimeoutError(TimeoutError): pass
 
 
-class RatingRequest(str):
+# class RatingRequest(str):
+class RatingRequest(bytes):
+    """
     def __init__(self, command, reliable=True, **kwargs):
-        self.command = command
+        self.command = command.encode()
         self.reliable = reliable
         self.kwargs = kwargs
         self.deferred = defer.Deferred()
@@ -73,11 +75,27 @@ class RatingRequest(str):
     def __new__(cls, command, reliable=True, **kwargs):
         reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in list(kwargs.items()))) or '')
         obj = str.__new__(cls, reqstr)
+        obj = super().__new__(cls, reqstr.encode('utf-8'))
+        print('RatingRequest object type: ', type(obj))
+        return obj
+    """
+    def __new__(cls, command, reliable=True, **kwargs):
+        reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in list(kwargs.items()))) or '')
+        obj = super().__new__(cls, reqstr.encode('utf-8'))
+        obj.command = command
+        obj.reliable = reliable
+        obj.kwargs = kwargs
+        obj.deferred = defer.Deferred()
         return obj
 
+    def __init__(self, *args, **kwargs):
+        super(RatingRequest, self).__init__()
 
-class RatingEngineProtocol(LineOnlyReceiver):
-    delimiter = '\n\n'
+
+#class RatingEngineProtocol(LineOnlyReceiver):
+class RatingEngineProtocol(protocol.Protocol):
+#    delimiter = '\n\n'
+    delimiter = b'\r\n'
 
     def __init__(self):
         self.connected = False
@@ -103,12 +121,16 @@ class RatingEngineProtocol(LineOnlyReceiver):
                 self._respond("Connection with the Rating Engine is down: %s" % reason, success=False)
         self.factory.application.connectionLost(self.transport.connector, reason, self)
 
-    def timeoutConnection(self):
-        log.info("Connection to Rating Engine at %s:%d timedout" % (self.transport.getPeer().host, self.transport.getPeer().port))
-        self.transport.loseConnection()
+#    def timeoutConnection(self):
+#        log.info("Connection to Rating Engine at %s:%d timed out" % (self.transport.getPeer().host, self.transport.getPeer().port))
+#        self.transport.loseConnection()
+
+    def dataReceived(self, data):
+        #log.debug('Rating response from %s:%S: %s' % (self.transport.getPeer().host, self.transport.getPeer().port, data))
+        self.lineReceived(data.decode())
 
     def lineReceived(self, line):
-        # log.debug('Got reply from rating engine: %s', line)
+        log.debug('Received response from rating engine %s:%s: %s' % (self.transport.getPeer().host, self.transport.getPeer().port, line.strip().replace("\n", " ")))
         if not line:
             return
         if self.__timeout_call is not None:
@@ -124,6 +146,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
             self._respond(str(e), success=False)
 
     def _PE_maxsessiontime(self, line):
+#        import pdb; pdb.set_trace()
         lines = line.splitlines()
 
         try:
@@ -143,7 +166,14 @@ class RatingEngineProtocol(LineOnlyReceiver):
             if limit < 0:
                 raise ValueError("rating engine limit must be a positive number, None or Locked: got '%s' from %s:%s" % (limit, self.transport.getPeer().host, self.transport.getPeer().port))
 
-        info = dict(line.split('=', 1) for line in lines[1:])
+        data_list = [line.split('=', 1) for line in lines[1:]]
+        info = {}
+        for elem in data_list:
+           try:
+              info[elem[0]] = elem[1]
+           except IndexError:
+              pass
+
         if 'type' in info:
             type = info['type'].lower()
             if type == 'prepaid':
@@ -157,6 +187,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
         return limit, prepaid
 
     def _PE_debitbalance(self, line):
+#        import pdb; pdb.set_trace()
         valid_answers = ('Ok', 'Failed', 'Not prepaid')
         lines = line.splitlines()
         try:
@@ -183,9 +214,13 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def _send_next_request(self):
         if self.connected:
             self.__request = self._request_queue.popleft()
-            self.sendLine(self.__request)
-            self._set_timeout()
-            # log.debug('Sent request to rating engine: %s', self.__request)
+            self.delimiter = b'\r\n'
+            log.debug("Send request to rating engine %s:%s: %s" % (self.transport.getPeer().host, self.transport.getPeer().port, self.__request.decode()))
+#            self.sendLine(self.__request)
+            self.transport.write(self.__request)
+            #self._set_timeout()
+            self._set_timeout(self.factory.timeout)
+            log.debug('Sent request to rating engine: %s', self.__request.decode())
         else:
             self.__request = None
 
@@ -206,7 +241,7 @@ class RatingEngineProtocol(LineOnlyReceiver):
     def _set_timeout(self, timeout=None):
         if timeout is None:
             timeout = self.factory.timeout
-        self.__timeout_call = reactor.callLater(timeout/1000.0, self.timeoutConnection)
+#        self.__timeout_call = reactor.callLater(timeout/1000, self.timeoutConnection)
 
     def send_request(self, request):
         if not request.reliable and not self.connected:
@@ -286,6 +321,7 @@ class RatingEngine(object):
         self.connection = None
 
     def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit, reliable=True):
+        #import pdb; pdb.set_trace()
         max_duration = max_duration or CallControlConfig.limit or 36000
         args = {}
         if call.inprogress:
@@ -315,7 +351,8 @@ class RatingEngineAddress(EndpointAddress):
     name = 'rating engine address'
 
 
-class RatingEngineConnections(object, metaclass=Singleton):
+class RatingEngineConnections(object):
+    __metaclass__ = Singleton
     def __init__(self):
         self.user_connections = {}
         if not ThorNodeConfig.enabled:

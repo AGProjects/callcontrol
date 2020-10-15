@@ -92,6 +92,8 @@ class CallsMonitor(object):
 
 class CallControlProtocol(LineOnlyReceiver):
     def lineReceived(self, line):
+        line = line.decode('utf-8')
+
         if line.strip() == "":
             if self.line_buf:
                 self._process()
@@ -103,15 +105,19 @@ class CallControlProtocol(LineOnlyReceiver):
         try:
             req = Request(self.line_buf[0], self.line_buf[1:])
         except InvalidRequestError as e:
+            log.info("Invalid OpenSIPS request: %s" % str(e))
             self._send_error_reply(failure.Failure(e))
         else:
-            # log.debug('Got request: %s', req)
+            log.debug('Received request from OpenSIPS %s', req)
 
             def _unknown_handler(req):
                 req.deferred.errback(failure.Failure(CommandError(req)))
+
             try:
+
                 getattr(self, '_CC_%s' % req.cmd, _unknown_handler)(req)
             except Exception as e:
+
                 self._send_error_reply(failure.Failure(e))
             else:
                 req.deferred.addCallbacks(callback=self._send_reply, errback=self._send_error_reply)
@@ -120,15 +126,16 @@ class CallControlProtocol(LineOnlyReceiver):
         self.line_buf = []
 
     def _send_reply(self, msg):
-        # log.debug('Sent reply: %s', msg)
-        self.sendLine(msg)
+        log.debug('Send response to OpenSIPS: %s', msg)
+        self.sendLine(msg.encode('utf-8'))
 
     def _send_error_reply(self, fail):
         log.error(fail.value)
-        # log.debug("Sent 'Error' reply")
-        self.sendLine('Error')
+        log.info("Sent 'Error' response to OpenSIPS")
+        self.sendLine(b'Error')
 
     def _CC_init(self, req):
+        #import pdb; pdb.set_trace()
         try:
             call = self.factory.application.calls[req.callid]
         except KeyError:
@@ -321,7 +328,7 @@ class CallControlServer(object):
             log.info('Saving calls')
             calls_file = process.runtime.file(backup_calls_file)
             try:
-                f = open(calls_file, 'w')
+                f = open(calls_file, 'wb')
             except:
                 pass
             else:

@@ -142,6 +142,7 @@ class Call(Structure):
         changes call parameters (ruri, diverter, ...), then update the call
         parameters and redo the setup to update the timer and time limit.
         """
+        #import pdb; pdb.set_trace()
         deferred = defer.Deferred()
         if not self.__initialized:  ## setup called for the first time
             if self.prepaid:
@@ -286,6 +287,8 @@ class Call(Structure):
                     log.warning('Time difference between sending BYEs and actual closing is > 10 seconds')
             else:
                 self.duration = duration
+        if not self.timelimit:
+            self.timelimit = 0
         if self.prepaid and not self.locked and self.timelimit > 0:
             ## even if call was not started we debit 0 seconds anyway to unlock the account
             rating = RatingEngineConnections.getConnection(self)

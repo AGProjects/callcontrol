@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import callcontrol
 import socket
@@ -26,12 +26,12 @@ class CallControlCommand(object):
             # noinspection PyShadowingNames
             try:
                 sock.connect(target)
-                sock.sendall(str(self))
-                response = ''
+                sock.sendall(str(self).encode())
+                response = b''
                 while True:
                     data = sock.recv(4096)
                     response += data
-                    if not data or data.endswith('\r\n\r\n'):
+                    if not data or data.endswith(b'\r\n\r\n'):
                         break
             except socket.error as e:
                 raise RuntimeError('could not send command to {}: {}'.format(target, e))
@@ -51,7 +51,7 @@ class ListCommand(CallControlCommand):
             kw = dict(command='debug', show='sessions', user=user)
         else:
             kw = dict(command='debug', show='sessions')
-        super(ListCommand, self).__init__(**kw)
+        super().__init__(**kw)
 
     @classmethod
     def handler(cls, options):
@@ -60,7 +60,7 @@ class ListCommand(CallControlCommand):
 
 class ShowCommand(CallControlCommand):
     def __init__(self, call_id):
-        super(ShowCommand, self).__init__(command='debug', show='session', callid=call_id)
+        super().__init__(command='debug', show='session', callid=call_id)
 
     @classmethod
     def handler(cls, options):
@@ -69,7 +69,7 @@ class ShowCommand(CallControlCommand):
 
 class TerminateCommand(CallControlCommand):
     def __init__(self, call_id):
-        super(TerminateCommand, self).__init__(command='terminate', callid=call_id)
+        super().__init__(command='terminate', callid=call_id)
 
     @classmethod
     def handler(cls, options):

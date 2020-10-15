@@ -1,4 +1,5 @@
 
+
 from application.version import Version
 from application.configuration import ConfigSection, ConfigSetting
 from application.system import host
@@ -92,25 +93,54 @@ class CallcontrolNode(EventServiceClient, metaclass=Singleton):
             from thor import network as thor_network
             network = thor_network.new(ThorNodeConfig.multiply)
             networks[role] = network
-        new_nodes = set([node.ip for node in role_map.get(role, [])])
-        old_nodes = set(network.nodes)
+        else:
+            first_run = False
+        ips = []
+        for node in role_map.get(role, []):
+            if isinstance(node.ip, bytes):
+                ips.append(node.ip.decode('utf-8'))
+            else:
+                ips.append(node.ip)
+        nodes = []
+        for node in network.nodes:
+            if isinstance(node, bytes):
+                nodes.append(node.decode('utf-8'))
+            else:
+                nodes.append(node)
+        new_nodes = set(ips)
+        old_nodes = set(nodes)
+ #       old_nodes = set(network.nodes)
         added_nodes = new_nodes - old_nodes
         removed_nodes = old_nodes - new_nodes
         if added_nodes:
+            log.debug('added nodes: %s', added_nodes)
             for node in added_nodes:
-                network.add_node(node)
-                address = RatingEngineAddress(node)
+                if isinstance(node, str):
+                    network.add_node(node.encode())
+                    address = RatingEngineAddress(node)
+                else:
+                    network.add_node(node)
+                    address = RatingEngineAddress(node.decode())
                 self.rating_connections[address] = RatingEngine(address)
             plural = 's' if len(added_nodes) != 1 else ''
-            log.info('Added rating node%s: %s', plural, ', '.join(added_nodes))
+#            log.info('Added rating node%s: %s', plural, ', '.join(added_nodes))
+            added_nodes_str = [node for node in added_nodes]
+            log.info("added %s node%s: %s" % (role, plural, ', '.join(added_nodes_str)))
         if removed_nodes:
+            log.debug('removed nodes: %s', removed_nodes)
             for node in removed_nodes:
-                network.remove_node(node)
-                address = RatingEngineAddress(node)
+                if isinstance(node, str):
+                    network.remove_node(node.encode())
+                    address = RatingEngineAddress(node)
+                else:
+                    network.remove_node(node)
+                    address = RatingEngineAddress(node.decode())
                 self.rating_connections[address].shutdown()
                 del self.rating_connections[address]
             plural = 's' if len(removed_nodes) != 1 else ''
-            log.info('Removed rating node%s: %s', plural, ', '.join(removed_nodes))
+#            log.info('Removed rating node%s: %s', plural, ', '.join(removed_nodes))
+            removed_nodes_str = [node for node in removed_nodes]
+            log.info("removed %s node%s: %s" % (role, plural, ', '.join(removed_nodes_str)))
 
 
 class SipthorBackend(object):
