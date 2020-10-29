@@ -104,9 +104,9 @@ class RatingEngineProtocol(protocol.Protocol, TimeoutMixin):
                 self._respond("Connection with the Rating Engine is down: %s" % reason, success=False)
         self.factory.application.connectionLost(self.transport.connector, reason, self)
 
-#    def timeoutConnection(self):
-#        log.info("Connection to Rating Engine at %s:%d timed out" % (self.transport.getPeer().host, self.transport.getPeer().port))
-#        self.transport.loseConnection()
+    def timeoutConnection(self):
+        log.info("Connection to Rating Engine at %s:%d timed out" % (self.transport.getPeer().host, self.transport.getPeer().port))
+        self.transport.loseConnection()
 
     def dataReceived(self, data):
         #log.debug('Rating response from %s:%S: %s' % (self.transport.getPeer().host, self.transport.getPeer().port, data))
