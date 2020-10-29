@@ -135,7 +135,6 @@ class CallControlProtocol(LineOnlyReceiver):
         self.sendLine(b'Error')
 
     def _CC_init(self, req):
-        #import pdb; pdb.set_trace()
         try:
             call = self.factory.application.calls[req.callid]
         except KeyError:

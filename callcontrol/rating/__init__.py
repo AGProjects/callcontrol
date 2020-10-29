@@ -63,22 +63,7 @@ class RatingEngineError(RatingError): pass
 class RatingEngineTimeoutError(TimeoutError): pass
 
 
-# class RatingRequest(str):
 class RatingRequest(bytes):
-    """
-    def __init__(self, command, reliable=True, **kwargs):
-        self.command = command.encode()
-        self.reliable = reliable
-        self.kwargs = kwargs
-        self.deferred = defer.Deferred()
-
-    def __new__(cls, command, reliable=True, **kwargs):
-        reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in list(kwargs.items()))) or '')
-        obj = str.__new__(cls, reqstr)
-        obj = super().__new__(cls, reqstr.encode('utf-8'))
-        print('RatingRequest object type: ', type(obj))
-        return obj
-    """
     def __new__(cls, command, reliable=True, **kwargs):
         reqstr = command + (kwargs and (' ' + ' '.join("%s=%s" % (name, value) for name, value in list(kwargs.items()))) or '')
         obj = super().__new__(cls, reqstr.encode('utf-8'))
@@ -92,9 +77,7 @@ class RatingRequest(bytes):
         super(RatingRequest, self).__init__()
 
 
-#class RatingEngineProtocol(LineOnlyReceiver):
-class RatingEngineProtocol(protocol.Protocol):
-#    delimiter = '\n\n'
+class RatingEngineProtocol(protocol.Protocol, TimeoutMixin):
     delimiter = b'\r\n'
 
     def __init__(self):
@@ -146,7 +129,6 @@ class RatingEngineProtocol(protocol.Protocol):
             self._respond(str(e), success=False)
 
     def _PE_maxsessiontime(self, line):
-#        import pdb; pdb.set_trace()
         lines = line.splitlines()
 
         try:
@@ -187,7 +169,6 @@ class RatingEngineProtocol(protocol.Protocol):
         return limit, prepaid
 
     def _PE_debitbalance(self, line):
-#        import pdb; pdb.set_trace()
         valid_answers = ('Ok', 'Failed', 'Not prepaid')
         lines = line.splitlines()
         try:
@@ -216,7 +197,6 @@ class RatingEngineProtocol(protocol.Protocol):
             self.__request = self._request_queue.popleft()
             self.delimiter = b'\r\n'
             log.debug("Send request to rating engine %s:%s: %s" % (self.transport.getPeer().host, self.transport.getPeer().port, self.__request.decode()))
-#            self.sendLine(self.__request)
             self.transport.write(self.__request)
             #self._set_timeout()
             self._set_timeout(self.factory.timeout)
@@ -321,7 +301,6 @@ class RatingEngine(object):
         self.connection = None
 
     def getCallLimit(self, call, max_duration=CallControlConfig.prepaid_limit, reliable=True):
-        #import pdb; pdb.set_trace()
         max_duration = max_duration or CallControlConfig.limit or 36000
         args = {}
         if call.inprogress:
