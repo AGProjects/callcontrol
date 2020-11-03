@@ -1,4 +1,4 @@
-callcontrol (4.0.0) UNRELEASED; urgency=medium
+callcontrol (4.0.0) unstable; urgency=medium
 
   * Migrated to Python 3
 
