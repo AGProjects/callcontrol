@@ -12,7 +12,7 @@ from application.python.types import Singleton
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.error import TimeoutError
 from twisted.internet import reactor, defer, protocol
-#from twisted.protocols.basic import LineOnlyReceiver
+from twisted.protocols.policies import TimeoutMixin
 from twisted.python import failure
 
 from callcontrol import configuration_file
