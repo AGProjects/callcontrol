@@ -167,9 +167,8 @@ class Call(Structure):
                     deferred.addCallback(self._setup_finish_timelimit)
                     deferred.callback(None)
                 return deferred
-        else:
-            deferred.callback(None)
-            return deferred
+        deferred.callback(None)
+        return deferred
 
     def _setup_finish_timelimit(self, result):
         from callcontrol.controller import CallControlConfig
