@@ -329,8 +329,8 @@ class RatingEngineAddress(EndpointAddress):
     name = 'rating engine address'
 
 
-class RatingEngineConnections(object):
-    __metaclass__ = Singleton
+class RatingEngineConnections(object, metaclass=Singleton):
+
     def __init__(self):
         self.user_connections = {}
         if not ThorNodeConfig.enabled:
