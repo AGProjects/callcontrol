@@ -1,27 +1,26 @@
 
 """Implementation of a call control server for OpenSIPS."""
 
-import os
 import grp
-import re
+import os
 import pickle
+import re
 import time
 
 from application import log
 from application.configuration import ConfigSection, ConfigSetting
 from application.process import process
 from application.system import unlink
-
+from twisted.internet import defer, reactor
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineOnlyReceiver
-from twisted.internet import reactor, defer
 from twisted.python import failure
 
-from callcontrol.scheduler import RecurrentCall, KeepRunning
+from callcontrol import backup_calls_file, configuration_file
 from callcontrol.raddb import RadiusDatabase, RadiusDatabaseError
-from callcontrol.sip import Call
 from callcontrol.rating import RatingEngineConnections
-from callcontrol import configuration_file, backup_calls_file
+from callcontrol.scheduler import KeepRunning, RecurrentCall
+from callcontrol.sip import Call
 
 
 class TimeLimit(int):

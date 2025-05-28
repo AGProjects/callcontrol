@@ -1,16 +1,16 @@
 
 import json
 import socket
+from abc import ABCMeta, abstractmethod, abstractproperty
+from random import getrandbits
 from urllib.parse import urlparse
 
-from abc import ABCMeta, abstractmethod, abstractproperty
 from application import log
 from application.configuration import ConfigSection
-from application.python.types import Singleton
 from application.process import process
+from application.python.types import Singleton
 from application.system import unlink
-from random import getrandbits
-from twisted.internet import reactor, defer
+from twisted.internet import defer, reactor
 from twisted.internet.protocol import DatagramProtocol
 from twisted.python.failure import Failure
 

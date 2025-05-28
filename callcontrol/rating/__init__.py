@@ -4,14 +4,13 @@
 import random
 from collections import deque
 
+from application import log
 from application.configuration import ConfigSection, ConfigSetting
 from application.configuration.datatypes import EndpointAddress
-from application import log
 from application.python.types import Singleton
-
-from twisted.internet.protocol import ReconnectingClientFactory
+from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import TimeoutError
-from twisted.internet import reactor, defer, protocol
+from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.protocols.policies import TimeoutMixin
 from twisted.python import failure
 
