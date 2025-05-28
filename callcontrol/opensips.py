@@ -50,8 +50,7 @@ class NegativeReplyError(OpenSIPSError):
         return '[{0.code}] {0.message}'.format(self)
 
 
-class Request(object):
-    __metaclass__ = ABCMeta
+class Request(object, metaclass=ABCMeta):
     method = abstractproperty()
 
     @abstractmethod
@@ -223,8 +222,7 @@ class UNIXSocketConnection(object):
             self.transport.requests.pop(request.id)
 
 
-class ManagementInterface(object):
-    __metaclass__ = Singleton
+class ManagementInterface(object, metaclass=Singleton):
     def __init__(self):
         self.connection = UNIXSocketConnection()
 
