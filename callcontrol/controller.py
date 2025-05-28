@@ -359,7 +359,7 @@ class CallControlServer(object):
     def _restore_calls(self):
         calls_file = process.runtime.file(backup_calls_file)
         try:
-            f = open(calls_file, 'r')
+            f = open(calls_file, 'rb')
         except:
             pass
         else:
