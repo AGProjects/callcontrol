@@ -1,22 +1,20 @@
 
 
-from application.version import Version
-from application.configuration import ConfigSection, ConfigSetting
-from application.system import host
 from application import log
+from application.configuration import ConfigSection, ConfigSetting
 from application.python.types import Singleton
-
+from application.system import host
+from application.version import Version
 from gnutls.interfaces.twisted import TLSContext, X509Credentials
-
 from thor import __version__ as thor_version
-from thor.eventservice import EventServiceClient, ThorEvent
-from thor.entities import ThorEntitiesRoleMap, GenericThorEntity as ThorEntity
-
-from callcontrol.tls import Certificate, PrivateKey
-from callcontrol.rating import RatingEngine, RatingEngineAddress
-from callcontrol import configuration_file, __version__
-
+from thor.entities import GenericThorEntity as ThorEntity
+from thor.entities import ThorEntitiesRoleMap
+from thor.eventservice import EventServiceClient
 from twisted.internet import defer, reactor
+
+from callcontrol import __version__, configuration_file
+from callcontrol.rating import RatingEngine, RatingEngineAddress
+from callcontrol.tls import Certificate, PrivateKey
 
 if Version.parse(thor_version) < Version.parse('1.1.21'):
     raise RuntimeError('Thor version is smaller than 1.1.21 (%s)' % thor_version)
