@@ -39,8 +39,8 @@ class CallcontrolNode(EventServiceClient, metaclass=Singleton):
         self.node = ThorEntity(host.default_ip, ['call_control'], version=__version__)
         self.networks = {}
         self.rating_connections = {}
-        self.presence_message = ThorEvent('Thor.Presence', self.node.id)
-        self.shutdown_message = ThorEvent('Thor.Leave', self.node.id)
+        self.presence_message = None
+        self.shutdown_message = None
         credentials = X509Credentials(ThorNodeConfig.certificate, ThorNodeConfig.private_key, [ThorNodeConfig.ca])
         credentials.verify_peer = True
         tls_context = TLSContext(credentials)
