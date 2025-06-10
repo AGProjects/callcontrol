@@ -1,5 +1,4 @@
 
-
 from application import log
 from application.configuration import ConfigSection, ConfigSetting
 from application.python.types import Singleton
@@ -9,7 +8,7 @@ from gnutls.interfaces.twisted import TLSContext, X509Credentials
 from thor import __version__ as thor_version
 from thor.entities import GenericThorEntity as ThorEntity
 from thor.entities import ThorEntitiesRoleMap
-from thor.eventservice import EventServiceClient
+from thor.eventservice import EventServiceClient, ThorEvent
 from twisted.internet import defer, reactor
 
 from callcontrol import __version__, configuration_file
@@ -39,7 +38,7 @@ class CallcontrolNode(EventServiceClient, metaclass=Singleton):
         self.node = ThorEntity(host.default_ip, ['call_control'], version=__version__)
         self.networks = {}
         self.rating_connections = {}
-        self.presence_message = None
+        self.presence_message = ThorEvent('Thor.Presence', self.node.id)
         self.shutdown_message = None
         credentials = X509Credentials(ThorNodeConfig.certificate, ThorNodeConfig.private_key, [ThorNodeConfig.ca])
         credentials.verify_peer = True
@@ -91,6 +90,10 @@ class CallcontrolNode(EventServiceClient, metaclass=Singleton):
             from thor import network as thor_network
             network = thor_network.new(ThorNodeConfig.multiply)
             networks[role] = network
+            if self.advertiser:
+                self.advertiser.cancel()
+                self.advertiser = None
+            reactor.callLater(1, self.publish, self.shutdown_message)
         else:
             first_run = False
         ips = []
