@@ -150,10 +150,10 @@ class RatingEngineProtocol(protocol.Protocol, TimeoutMixin):
         data_list = [line.split('=', 1) for line in lines[1:]]
         info = {}
         for elem in data_list:
-           try:
-              info[elem[0]] = elem[1]
-           except IndexError:
-              pass
+            try:
+                info[elem[0]] = elem[1]
+            except IndexError:
+                pass
 
         if 'type' in info:
             type = info['type'].lower()
