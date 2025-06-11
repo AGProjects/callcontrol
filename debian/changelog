@@ -1,3 +1,15 @@
+callcontrol (4.1.0) unstable; urgency=medium
+
+  * Publish role on the thor network until rating servers are found
+  * Fixed metaclass to fix multiple connections to the rating engine that never closed
+  * Fixed incompatible metaclasses for python3
+  * Fixed restoring saved calls
+  * Simplified code
+  * Fixed indentation
+  * Reordered imports
+
+ -- Tijmen de Mes <tijmen@ag-projects.com>  Wed, 11 Jun 2025 14:02:20 +0200
+
 callcontrol (4.0.1) unstable; urgency=medium
 
   * Added fix to return always from sip call setup
